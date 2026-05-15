@@ -1,0 +1,149 @@
+# docker-compose.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# Supplier Agent — Intelligent e-Procurement for MYPES
+# ─────────────────────────────────────────────────────────────────────────────
+# GPU USERS (Linux only):
+#   Run ./setup.sh first, then:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# CPU / macOS Apple Silicon:
+#   docker compose up -d      (Metal acceleration is automatic on Apple Silicon)
+# ─────────────────────────────────────────────────────────────────────────────
+name: supplier-agent
+
+services:
+
+  # ── PostgreSQL 16 ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: supplier_agent_db
+      POSTGRES_USER: mypes_user
+      POSTGRES_PASSWORD: changeme
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - supplier-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mypes_user -d supplier_agent_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Ollama (local LLM runtime) ────────────────────────────────────────────
+  # Model is pulled natively on first start (~2 GB download, once only).
+  # For GPU acceleration on Linux run ./setup.sh, then use docker-compose.gpu.yml.
+  # On Apple Silicon macOS, Metal is used automatically — no extra config needed.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama      # persists downloaded model weights
+    ports:
+      - "11434:11434"
+    networks:
+      - supplier-net
+    # Pull the model on first boot, then keep serving.
+    # The '|| true' on pull means a cached model won't fail the container.
+    entrypoint: >
+      /bin/sh -c "
+        ollama serve &
+        OLLAMA_PID=$$!;
+        until curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; do sleep 2; done;
+        ollama pull llama3.2:3b || true;
+        wait $$OLLAMA_PID
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s   # generous window for first-run download
+
+  # ── FastAPI backend ───────────────────────────────────────────────────────
+  fastapi:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fastapi
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: llama3.2:3b        # matches the natively-pulled tag
+    volumes:
+      - ./backend:/app
+      - po_pdfs:/app/generated_pos
+    ports:
+      - "8000:8000"
+    networks:
+      - supplier-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+  # ── n8n workflow automation ───────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      N8N_HOST: n8n
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: supplier_agent_db
+      DB_POSTGRESDB_USER: mypes_user
+      DB_POSTGRESDB_PASSWORD: changeme
+      N8N_ENCRYPTION_KEY: change_this_to_a_random_32char_string
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/home/node/.n8n/workflows
+    ports:
+      - "5678:5678"
+    networks:
+      - supplier-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── React frontend (nginx) ────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - supplier-net
+    depends_on:
+      - fastapi
+
+# ── Named volumes ─────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+  ollama_data:
+  n8n_data:
+  po_pdfs:
+
+# ── Network ───────────────────────────────────────────────────────────────
+networks:
+  supplier-net:
+    driver: bridge

@@ -1,0 +1,25 @@
+# docker-compose.gpu.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# NVIDIA GPU override for Ollama.
+# Apply ONLY on Linux hosts with an NVIDIA GPU and NVIDIA Container Toolkit.
+#
+# Usage (after running ./setup.sh successfully):
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# This file adds the GPU reservation to the ollama service.
+# All other services remain unchanged from docker-compose.yml.
+#
+# Verify GPU is visible inside the container after startup:
+#   docker exec ollama nvidia-smi
+# ─────────────────────────────────────────────────────────────────────────────
+name: supplier-agent
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
