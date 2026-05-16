@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.base import Base
@@ -18,6 +19,7 @@ class PurchaseOrder(Base):
     __tablename__ = "purchase_orders"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    request_id: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
     supplier_id: Mapped[int] = mapped_column(
         ForeignKey("suppliers.id", ondelete="RESTRICT"), nullable=False, index=True
     )
@@ -34,6 +36,7 @@ class PurchaseOrder(Base):
     )
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="PEN")
     total_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     pdf_path: Mapped[str | None] = mapped_column(String(512))
     notes: Mapped[str | None] = mapped_column(String(4000))
     created_by: Mapped[str | None] = mapped_column(String(255))

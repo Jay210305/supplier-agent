@@ -26,8 +26,12 @@ def test_procurement_ping(client: TestClient) -> None:
     assert response.json() == {"status": "ok", "router": "procurement"}
 
 
+@patch("routers.procurement.estimate_minimum_order_total", new_callable=AsyncMock)
 @patch("routers.procurement.ollama_client.extract_entities", new_callable=AsyncMock)
-def test_parse_procurement_email_success(mock_extract: AsyncMock, client: TestClient) -> None:
+def test_parse_procurement_email_success(
+    mock_extract: AsyncMock, mock_est: AsyncMock, client: TestClient
+) -> None:
+    mock_est.return_value = Decimal("25000.00")
     mock_request = ProcurementRequestExtracted(
         request_id="REQ-2026-001",
         items=[ProcurementItem(product="Laptop", quantity=10)],
@@ -53,6 +57,8 @@ def test_parse_procurement_email_success(mock_extract: AsyncMock, client: TestCl
     assert data["constraints"]["max_budget"] == 30000.0
     assert data["constraints"]["currency"] == "PEN"
     assert data["priority"] == "high"
+    assert data["budget_exceeded"] is False
+    assert data["estimated_minimum_total"] == 25000.0
 
 
 @patch("routers.procurement.ollama_client.extract_entities", new_callable=AsyncMock)
@@ -81,8 +87,10 @@ def test_parse_procurement_email_ollama_error(mock_extract: AsyncMock, client: T
     assert "Procurement parsing service unavailable" in response.json()["detail"]
 
 
+@patch("routers.procurement.estimate_minimum_order_total", new_callable=AsyncMock)
 @patch("routers.procurement.ollama_client.extract_entities", new_callable=AsyncMock)
-def test_parse_rate_limit(mock_extract: AsyncMock, client: TestClient) -> None:
+def test_parse_rate_limit(mock_extract: AsyncMock, mock_est: AsyncMock, client: TestClient) -> None:
+    mock_est.return_value = Decimal("1.00")
     mock_extract.return_value = ProcurementRequestExtracted(
         request_id="REQ-2026-001",
         items=[ProcurementItem(product="Laptop", quantity=10)],

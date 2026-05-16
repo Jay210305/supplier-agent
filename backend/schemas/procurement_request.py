@@ -63,3 +63,16 @@ class ProcurementJustificationLLM(BaseModel):
     recommended_supplier_id: int
     justification: Annotated[str, Field(min_length=1, max_length=8000)]
     runner_up_supplier_id: int | None = None
+
+
+class ProcurementParseResponse(ProcurementRequestExtracted):
+    """LLM extraction plus catalog-based budget lower bound (n8n uses budget_exceeded)."""
+
+    budget_exceeded: bool = False
+    estimated_minimum_total: Decimal | None = None
+
+    @field_serializer("estimated_minimum_total", when_used="json")
+    def _ser_est(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)

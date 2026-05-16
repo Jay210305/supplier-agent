@@ -99,3 +99,47 @@ def test_entity_extraction_prompt_file(ollama_client: OllamaClient) -> None:
 def test_justification_prompt_file(ollama_client: OllamaClient) -> None:
     text = ollama_client._prompt_file("justification.txt")
     assert "recommended_supplier_id" in text.lower() or "json" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_get_justification_retries_then_succeeds(ollama_client: OllamaClient) -> None:
+    from schemas.procurement_request import (
+        ProcurementConstraints,
+        ProcurementItem,
+        ProcurementRequestExtracted,
+    )
+
+    bad = {"recommended_supplier_id": "x", "justification": "no"}
+    good = {
+        "recommended_supplier_id": 2,
+        "justification": "Fast delivery.",
+        "runner_up_supplier_id": 1,
+    }
+    req = ProcurementRequestExtracted(
+        request_id="REQ-1",
+        items=[ProcurementItem(product="Laptop", quantity=1)],
+        constraints=ProcurementConstraints(max_budget=Decimal("10000"), currency="PEN"),
+        priority=None,
+    )
+    top = [
+        {
+            "id": 2,
+            "name": "B",
+            "extended_total_pen": 100.0,
+            "bottleneck_lead_days": 1,
+            "wlc_score": 0.8,
+            "price_score": 0.5,
+            "delivery_score": 0.9,
+            "reliability_score": 0.8,
+            "rating": 8.0,
+        }
+    ]
+    with patch.object(
+        ollama_client,
+        "_generate_json",
+        new_callable=AsyncMock,
+        side_effect=[bad, good],
+    ):
+        out = await ollama_client.get_justification(top, req)
+    assert out.recommended_supplier_id == 2
+    assert out.runner_up_supplier_id == 1

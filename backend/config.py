@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://ollama:11434"
     OLLAMA_MODEL: str = "llama3.2:3b"
 
+    # PDF output (Docker: /app/generated_pos; local tests may override)
+    GENERATED_POS_DIR: str = "/app/generated_pos"
+
     @property
     def prompts_dir(self) -> Path:
         backend_dir = Path(__file__).resolve().parent

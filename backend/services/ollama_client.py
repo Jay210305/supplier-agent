@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from pydantic import ValidationError
 
 from config import settings
 from schemas.procurement_request import ProcurementJustificationLLM, ProcurementRequestExtracted
@@ -20,6 +21,14 @@ CRITICAL — SECOND ATTEMPT RULES:
   priority: one of "low" | "medium" | "high" or null.
 Example (structure only):
 {"request_id":"REQ-2026-001","items":[{"product":"Laptop","quantity":10}],"constraints":{"max_budget":30000.00,"currency":"PEN","delivery_before":"2026-05-19"},"priority":"high"}
+"""
+
+
+_JUSTIFICATION_STRICT_SUFFIX = """
+CRITICAL — SECOND ATTEMPT RULES:
+- Return ONE JSON object only. No markdown, no code fences, no text before or after.
+- Keys required: recommended_supplier_id (integer), justification (string), runner_up_supplier_id (integer|null)
+Example: {"recommended_supplier_id":12,"justification":"Meets deadline and budget.","runner_up_supplier_id":7}
 """
 
 
@@ -126,8 +135,12 @@ class OllamaClient:
         suppliers_text = "\n".join(
             (
                 f"Supplier ID: {s['id']}, Name: {s['name']}, "
-                f"Unit Price: {s.get('unit_price', 'N/A')}, "
-                f"Lead Time: {s.get('lead_time_days', 'N/A')} days, "
+                f"Extended order total (PEN): {float(s.get('extended_total_pen', 0)):.2f}, "
+                f"Bottleneck lead time (days): {s.get('bottleneck_lead_days', 'N/A')}, "
+                f"WLC score (0-1): {float(s.get('wlc_score', 0)):.4f}, "
+                f"Price score: {float(s.get('price_score', 0)):.4f}, "
+                f"Delivery score: {float(s.get('delivery_score', 0)):.4f}, "
+                f"Reliability score: {float(s.get('reliability_score', 0)):.4f}, "
                 f"Rating: {s.get('rating', 'N/A')}/10"
             )
             for s in top_suppliers
@@ -136,7 +149,7 @@ class OllamaClient:
             f"- {item.product}: {item.quantity}" for item in procurement_request.items
         )
         constraints = procurement_request.constraints
-        full_prompt = f"""{prompt_template}
+        base_user = f"""{prompt_template}
 
 PROCUREMENT REQUEST:
 Request ID: {procurement_request.request_id}
@@ -152,10 +165,23 @@ TOP 3 SUPPLIERS (from WLC scoring):
 
 Respond in the exact JSON format specified in the system instructions."""
 
-        data = await self._generate_json(full_prompt)
-        if "runner_up_supplier_id" not in data:
-            data["runner_up_supplier_id"] = None
-        try:
-            return ProcurementJustificationLLM.model_validate(data)
-        except Exception as e:
-            raise OllamaValidationError(f"Justification validation error: {e}") from e
+        prompts = (base_user, f"{base_user}\n\n{_JUSTIFICATION_STRICT_SUFFIX}")
+        last_val_err: OllamaValidationError | None = None
+
+        for full_prompt in prompts:
+            try:
+                data = await self._generate_json(full_prompt)
+                if "runner_up_supplier_id" not in data:
+                    data["runner_up_supplier_id"] = None
+                return ProcurementJustificationLLM.model_validate(data)
+            except OllamaClientError:
+                raise
+            except OllamaValidationError as e:
+                last_val_err = e
+                continue
+            except ValidationError as e:
+                last_val_err = OllamaValidationError(f"Justification validation error: {e}")
+                continue
+
+        assert last_val_err is not None
+        raise last_val_err
