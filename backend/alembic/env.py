@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import settings  # noqa: E402
 from models.base import Base  # noqa: E402
+import models.catalog_search_cache  # noqa: E402, F401
+import models.catalog_source  # noqa: E402, F401
 import models.procurement_log  # noqa: E402, F401
 import models.product  # noqa: E402, F401
 import models.purchase_order  # noqa: E402, F401

@@ -14,3 +14,8 @@ class LogSeverity(str, Enum):
     INFO = "INFO"
     WARNING = "WARNING"
     ERROR = "ERROR"
+
+
+class CatalogSourceKind(str, Enum):
+    WEBSITE = "website"
+    EMAIL = "email"

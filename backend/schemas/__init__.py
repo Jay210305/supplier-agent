@@ -1,3 +1,14 @@
+from schemas.catalog_source import (
+    AdapterInfo,
+    CatalogSourceCreate,
+    CatalogSourceRead,
+    CatalogSourceUpdate,
+    ExternalProductResult,
+    ExternalSearchBody,
+    ExternalSearchResponse,
+    TestSourceBody,
+    TestSourceResponse,
+)
 from schemas.procurement_request import (
     ProcurementConstraints,
     ProcurementItem,
@@ -17,6 +28,13 @@ from schemas.purchase_order import (
 from schemas.supplier import SupplierCreate, SupplierRead, SupplierUpdate
 
 __all__ = [
+    "AdapterInfo",
+    "CatalogSourceCreate",
+    "CatalogSourceRead",
+    "CatalogSourceUpdate",
+    "ExternalProductResult",
+    "ExternalSearchBody",
+    "ExternalSearchResponse",
     "OrderGenerateResponse",
     "ProcurementConstraints",
     "ProcurementItem",
@@ -34,4 +52,6 @@ __all__ = [
     "SupplierCreate",
     "SupplierRead",
     "SupplierUpdate",
+    "TestSourceBody",
+    "TestSourceResponse",
 ]

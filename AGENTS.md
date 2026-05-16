@@ -686,9 +686,73 @@ curl -X POST http://localhost:8000/procurement/parse \
 # ── Reset all data (wipe volumes) ─────────────────
 docker compose down -v
 
+# ── Seed local suppliers (hard-coded demo data) ───
+docker exec fastapi python -m db.seed
+
+# ── Seed external catalog sources (MercadoLibre, Amazon, eBay, ...) ─
+docker exec fastapi python -m db.seed_catalog_sources
+
+# ── List external sources ─────────────────────────
+curl http://localhost:8000/catalog-sources
+
+# ── Test an external source end-to-end ────────────
+curl -X POST http://localhost:8000/catalog-sources/1/test \
+ -H "Content-Type: application/json" \
+ -d '{"query": "laptop", "limit": 5}'
+
 # ── Open n8n UI ───────────────────────────────────
 open http://localhost:5678
 
 # ── Open frontend ─────────────────────────────────
 open http://localhost:3000
 ```
+
+---
+
+## 19. External Catalog Sources (Phase 4 extension)
+
+Beyond the hard-coded local supplier pool seeded by `backend/db/seed.py`, the
+agent can fan out to a **configurable pool of external providers** at procure
+time. Sources are user-managed via the frontend (`/sources`) or the REST API.
+
+### Architecture
+- `catalog_sources` table: one row per external provider (website or email),
+  with `adapter_key`, `endpoint`, `is_enabled`, `auth`, `config`, rate-limit
+  and timeout.
+- `catalog_search_cache` table: short-TTL JSONB cache (default 6h) keyed by
+  `(source_id, sha256(query))`.
+- `services/catalog_adapters/`: one adapter per integration. Built-ins:
+  - `mercadolibre` — public search API (default-enabled, no auth).
+  - `amazon` — PA-API 5 (requires AWS SigV4 credentials).
+  - `ebay` — Browse API (requires OAuth bearer token).
+  - `alibaba` — Open Platform (requires app_key/app_secret).
+  - `generic_http` — HTML scraping driven by CSS selectors in `config`.
+  - `email_rfq` — outbound RFQ (async; never blocks scoring).
+- `services/catalog_search.py`: per-source semaphore + per-source httpx timeout
+  + global timeout wrapping `asyncio.gather`. Each adapter coroutine uses its
+  own `AsyncSession` for concurrency safety.
+- `services/candidate_aggregator.py`: merges local DB suppliers and external
+  results into a single `list[SupplierQuote]` consumed by the existing WLC
+  scoring pipeline. External results use a **virtual** `supplier_id = -<source_id>`
+  so they never collide with real supplier IDs.
+- External hits are **never** persisted to `products` / `suppliers`. They live
+  only in the JSONB cache + in-memory `SupplierQuote` objects.
+
+### Endpoints
+- `GET    /catalog-sources` — list all sources
+- `GET    /catalog-sources/adapters` — list available adapter keys + metadata
+- `POST   /catalog-sources` — create
+- `GET    /catalog-sources/{id}` — read
+- `PATCH  /catalog-sources/{id}` — update / toggle `is_enabled`
+- `DELETE /catalog-sources/{id}` — delete
+- `POST   /catalog-sources/{id}/test` — run adapter once, do NOT touch cache
+- `POST   /catalog-sources/search` — cached fan-out for a single query
+
+### `/procurement/parse` integration
+The body accepts two new fields (both optional):
+- `include_external: bool = true` — toggle the external fan-out per request.
+- `source_ids: list[int] | None` — restrict to a subset of source IDs.
+
+The response gains `sources_used: list[str]` and `external_candidate_count: int`.
+`budget_exceeded` and `estimated_minimum_total` now take the minimum of local
+and external lower-bound estimates.

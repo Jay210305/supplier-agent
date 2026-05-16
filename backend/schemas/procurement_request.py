@@ -55,6 +55,8 @@ class ProcurementParseBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     email_body: Annotated[str, Field(min_length=1, max_length=100_000)]
+    include_external: bool = True
+    source_ids: list[int] | None = None
 
 
 class ProcurementJustificationLLM(BaseModel):
@@ -70,6 +72,8 @@ class ProcurementParseResponse(ProcurementRequestExtracted):
 
     budget_exceeded: bool = False
     estimated_minimum_total: Decimal | None = None
+    sources_used: list[str] = []
+    external_candidate_count: int = 0
 
     @field_serializer("estimated_minimum_total", when_used="json")
     def _ser_est(self, value: Decimal | None) -> float | None:

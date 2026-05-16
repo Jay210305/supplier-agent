@@ -19,6 +19,20 @@ class Settings(BaseSettings):
     # PDF output (Docker: /app/generated_pos; local tests may override)
     GENERATED_POS_DIR: str = "/app/generated_pos"
 
+    # External catalog search
+    EXTERNAL_SEARCH_ENABLED: bool = True
+    EXTERNAL_SEARCH_DEFAULT_LIMIT: int = 10
+    EXTERNAL_SEARCH_CACHE_TTL_HOURS: int = 6
+    EXTERNAL_SEARCH_GLOBAL_TIMEOUT: int = 20
+
+    # Optional adapter credentials (CatalogSource.auth wins over these)
+    AMAZON_PAAPI_ACCESS_KEY: str = ""
+    AMAZON_PAAPI_SECRET_KEY: str = ""
+    AMAZON_PAAPI_PARTNER_TAG: str = ""
+    EBAY_OAUTH_TOKEN: str = ""
+    ALIBABA_APP_KEY: str = ""
+    ALIBABA_APP_SECRET: str = ""
+
     @property
     def prompts_dir(self) -> Path:
         backend_dir = Path(__file__).resolve().parent

@@ -8,7 +8,7 @@ from sqlalchemy import text
 
 from db.session import engine
 from limiter import limiter
-from routers import orders, procurement, scoring, suppliers
+from routers import catalog_sources, orders, procurement, scoring, suppliers
 
 app = FastAPI(title="Supplier Agent API", version="0.1.0")
 app.state.limiter = limiter
@@ -16,6 +16,9 @@ app.include_router(procurement.router, prefix="/procurement", tags=["procurement
 app.include_router(suppliers.router, prefix="/suppliers", tags=["suppliers"])
 app.include_router(orders.router, prefix="/orders", tags=["orders"])
 app.include_router(scoring.router, prefix="/scoring", tags=["scoring"])
+app.include_router(
+    catalog_sources.router, prefix="/catalog-sources", tags=["catalog-sources"]
+)
 
 
 @app.exception_handler(RateLimitExceeded)
