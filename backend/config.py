@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,6 +15,14 @@ class Settings(BaseSettings):
 
     OLLAMA_BASE_URL: str = "http://ollama:11434"
     OLLAMA_MODEL: str = "llama3.2:3b"
+
+    @property
+    def prompts_dir(self) -> Path:
+        backend_dir = Path(__file__).resolve().parent
+        repo_prompts = backend_dir.parent / "prompts"
+        if repo_prompts.is_dir():
+            return repo_prompts
+        return Path("/prompts")
 
     @property
     def async_database_url(self) -> str:

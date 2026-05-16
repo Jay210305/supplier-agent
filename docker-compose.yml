@@ -80,6 +80,7 @@ services:
       OLLAMA_MODEL: llama3.2:3b        # matches the natively-pulled tag
     volumes:
       - ./backend:/app
+      - ./prompts:/prompts:ro
       - po_pdfs:/app/generated_pos
     ports:
       - "8000:8000"
