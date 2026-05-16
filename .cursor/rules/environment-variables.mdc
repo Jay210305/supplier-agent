@@ -1,0 +1,89 @@
+---
+description: Environment variables and secrets management standards
+globs: ".env, .env.example, docker-compose.yml, docker-compose.gpu.yml, backend/**/*.py, frontend/**/*"
+---
+
+# Environment Variables & Secrets Rules
+
+## .env File
+- The `.env` file must be created at the project root and must not be committed to git.
+- The `.env.example` file must be committed and contain all required variables with placeholder values or comments.
+- All services that require environment variables must read them from the `.env` file (via Docker Compose `env_file` or `environment` with variable substitution).
+
+## Required Variables
+The following variables must be defined in `.env` (as per the documentation):
+- POSTGRES_DB
+- POSTGRES_USER
+- POSTGRES_PASSWORD
+- OLLAMA_BASE_URL (internal URL for FastAPI: http://ollama:11434)
+- OLLAMA_MODEL
+- LM_STUDIO_MODELS_PATH (absolute path on the host to the LM Studio models directory)
+- IMAP_HOST
+- IMAP_PORT
+- IMAP_USER
+- IMAP_PASSWORD
+- SECRET_KEY (for FastAPI)
+- ENV (development/production)
+- API_PORT (for FastAPI, default 8000)
+
+## Service-Specific Variables
+- PostgreSQL: Uses POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD.
+- Ollama: Uses LM_STUDIO_MODELS_PATH (for volume mount) and the model is registered via the entrypoint.
+- FastAPI: Requires POSTGRES_HOST (set to `postgres`), POSTGRES_PORT (5432), OLLAMA_BASE_URL, OLLAMA_MODEL, SECRET_KEY, ENV, API_PORT.
+- n8n: Requires DB_TYPE, DB_POSTGRESDB_HOST, DB_POSTGRESDB_PORT, DB_POSTGRESDB_DATABASE, DB_POSTGRESDB_USER, DB_POSTGRESDB_PASSWORD, N8N_ENCRYPTION_KEY, and also N8N_HOST, N8N_PORT, N8N_PROTOCOL, WEBHOOK_URL.
+- Frontend: No direct environment variables at runtime; but the Docker build may use variables for configuration (not currently used).
+
+## Variable Naming and Usage
+- Use uppercase with underscores for environment variable names.
+- Do not use the same variable name for different purposes across services.
+- In Docker Compose, use the `env_file` directive to load the `.env` file, and then override specific variables if needed via the `environment` section.
+- In the backend (FastAPI), use a settings class (Pydantic Settings) or `os.getenv` to read variables. Do not hardcode.
+- In the frontend, the nginx configuration does not use environment variables; if needed, use a dynamic configuration mechanism (e.g., a config.js file generated at runtime).
+
+## Secrets Management
+- Never commit real secrets to git. Use `.env.example` for placeholders.
+- All secrets (passwords, keys, etc.) must be stored in the `.env` file and accessed via environment variables.
+- The `SECRET_KEY` for FastAPI must be a long, random string (at least 32 characters).
+- The `N8N_ENCRYPTION_KEY` must be a random 32-character string.
+- The `IMAP_PASSWORD` should be an app-specific password (not the user's main password) if using Gmail or similar.
+
+## Docker Compose and Environment
+- In `docker-compose.yml`, use variable substitution (e.g., `${POSTGRES_DB}`) to inject environment variables into the service definitions.
+- The `LM_STUDIO_MODELS_PATH` must be set to the absolute path on the host machine where the LM Studio models are stored.
+- The `POSTGRES_HOST`, `OLLAMA_BASE_URL`, etc., inside the containers must be the service names (as defined in Docker Compose) and not `localhost`.
+
+## Development vs Production
+- The `ENV` variable must be set to `development` for local development and `production` for production deployments.
+- In development, the backend may use reload (as in the docker-compose command) and the frontend may be served with hot reloading (if we change the setup, but currently we use a static build).
+- In production, disable reload and use production-ready servers (e.g., gunicorn for FastAPI, but we are using uvicorn; adjust as needed).
+
+## Validation
+- The backend must validate that required environment variables are present and of the correct type at startup.
+- If a required variable is missing, the application must fail to start with a clear error message.
+
+## Example .env.example
+The `.env.example` file must contain:
+```
+# ── Database ──────────────────────────────────────
+POSTGRES_DB=supplier_agent_db
+POSTGRES_USER=mypes_user
+POSTGRES_PASSWORD=changeme
+
+# ── Ollama ────────────────────────────────────────
+OLLAMA_BASE_URL=http://ollama:11434
+OLLAMA_MODEL=llama3.2-3b
+
+# ── LM Studio model mount ─────────────────────────
+LM_STUDIO_MODELS_PATH=/Users/yourname/.lmstudio/models
+
+# ── Email (IMAP) ──────────────────────────────────
+IMAP_HOST=imap.gmail.com
+IMAP_PORT=993
+IMAP_USER=compras@mype.com.pe
+IMAP_PASSWORD=your_gmail_app_password
+
+# ── FastAPI ───────────────────────────────────────
+SECRET_KEY=generate_a_long_random_string_here
+ENV=development
+API_PORT=8000
+```

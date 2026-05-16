@@ -1,0 +1,29 @@
+---
+description: Docker and inter-service communication standards
+globs: "**/*"
+---
+
+# Docker & Service Communication Rules
+
+## Docker Compose Usage
+- Always use `docker compose up -d` to start the system; never rely on locally installed runtimes.
+- All services must be defined in `docker-compose.yml` with explicit `depends_on` and healthchecks.
+- Never use `localhost` for inter-service calls; use Docker service names as hostnames:
+  - `postgres:5432`
+  - `ollama:11434`
+  - `fastapi:8000`
+  - `n8n:5678`
+  - `frontend:80` (internal) / `localhost:3000` (host-exposed)
+
+## Image & Build Practices
+- Backend Dockerfile must install WeasyPrint system dependencies (`libpango`, `libcairo2`, etc.).
+- Frontend Dockerfile must use multi-stage build with `node:20-alpine` builder and `nginx:alpine` runtime.
+- Never commit `node_modules`, `venv`, or build artifacts to git.
+
+## Networking
+- All containers must attach to the `supplier-net` bridge network.
+- Host-exposed ports are defined in `docker-compose.yml` and must not be changed without updating related documentation and frontend proxy.
+
+## Healthchecks
+- Every service must declare a `healthcheck` that verifies the service is ready (e.g., `pg_isready`, `curl` to `/health`).
+- Dependencies must use `condition: service_healthy`.

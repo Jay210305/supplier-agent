@@ -1,0 +1,29 @@
+---
+description: Database schema, migrations, and ORM usage standards
+globs: "**/*.py"
+---
+
+# Database & ORM Rules
+
+## Schema Definitions
+- All table definitions must be in SQLAlchemy 2.0 style in `backend/models/`.
+- The `suppliers.ruc` column must be `VARCHAR(11)` and have a check constraint for exactly 11 digits (regex `^\d{11}$`).
+- Monetary values must use `NUMERIC(10,2)` and default currency is PEN (Peruvian Sol).
+- Timestamps must be timezone-aware and use `TIMESTAMPTZ` (or SQLAlchemy's `DateTime(timezone=True)`).
+- Use `ON DELETE CASCADE` for foreign keys where appropriate (e.g., `products.supplier_id`).
+
+## Migrations
+- All schema changes must go through Alembic; never execute raw DDL in application code.
+- Migration scripts must be generated with `alembic revision --autogenerate` and then reviewed.
+- The `alembic/versions/` directory must contain only migration files; no other code.
+- Before running the application, always run `alembic upgrade head` (as done in the FastAPI container command).
+
+## ORM Usage
+- Use SQLAlchemy 2.0 style (select, insert, update, delete) for all database operations.
+- Never use raw string SQL for queries; use SQLAlchemy's query builder to prevent injection.
+- Pydantic v2 models must be used for request/response validation; never persist unvalidated data.
+- The `procurement_logs.payload` and `purchase_orders.payload` columns are JSONB and must contain only validated data.
+
+## Seeding
+- The `backend/db/seed.py` script must be used only for development and testing data.
+- In production, the database must be started with migrations and without seeding dummy data.

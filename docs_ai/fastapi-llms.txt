@@ -1,0 +1,102 @@
+# https://fastapi.tiangolo.com/ llms.txt
+
+- [FastAPI Overview](https://fastapi.tiangolo.com/#requirements): FastAPI: High-performance web framework for building APIs in Python.
+- [Pydantic Model Fields](https://fastapi.tiangolo.com/fr/tutorial/body-fields/): Learn to declare Pydantic model fields and validations.
+- [FastAPI Repository Management](https://fastapi.tiangolo.com/fr/management-tasks/#mark-github-discussions-answers): Guidelines for managing FastAPI repository tasks effectively.
+- [FastAPI Middleware Guide](https://fastapi.tiangolo.com/tr/reference/middleware/): Explore various FastAPI middlewares for enhanced functionality.
+- [FastAPI Middleware Overview](https://fastapi.tiangolo.com/pt/tutorial/middleware/#other-middlewares): Explore middleware implementation for FastAPI applications effectively.
+- [Advanced Security Features](https://fastapi.tiangolo.com/es/advanced/security/#read-the-tutorial-first): Explore advanced security features and user guidance for FastAPI.
+- [Python Virtual Environments](https://fastapi.tiangolo.com/pt/virtual-environments/): Guide to Python virtual environments for project isolation.
+- [Custom Responses in FastAPI](https://fastapi.tiangolo.com/ko/advanced/custom-response/#additional-documentation): Explore custom responses in FastAPI, including HTML and JSON.
+- [FastAPI Request Body Guide](https://fastapi.tiangolo.com/de/tutorial/body/#without-pydantic): Learn to use request bodies in FastAPI without Pydantic.
+- [FastAPI Cloud Deployment](https://fastapi.tiangolo.com/ko/deployment/fastapicloud/#deploy-your-own-server): Deploy your FastAPI app easily on FastAPI Cloud.
+- [FastAPI Static Files](https://fastapi.tiangolo.com/zh-hant/reference/staticfiles/): Serve static files easily with FastAPI's StaticFiles class.
+- [FastAPI Alternatives Overview](https://fastapi.tiangolo.com/es/alternatives/): FastAPI alternatives, inspirations, comparisons, and their influence discussed.
+- [LLM-Testdatei](https://fastapi.tiangolo.com/de/_llm-test/): Testen der LLM-Übersetzung und Verbesserungsprompts für FastAPI.
+- [Async/Await Overview](https://fastapi.tiangolo.com/es/async/#other-utility-functions): Learn about concurrency and async/await in FastAPI.
+- [FastAPI Docker Deployment](https://fastapi.tiangolo.com/de/deployment/docker/#recap): Learn to deploy FastAPI applications using Docker containers.
+- [FastAPI Path Operations](https://fastapi.tiangolo.com/es/tutorial/path-operation-configuration/): Learn to configure FastAPI path operations effectively and easily.
+- [FastAPI Form Data](https://fastapi.tiangolo.com/ja/tutorial/request-forms/): Learn to handle form data in FastAPI applications effectively.
+- [FastAPI Security Basics](https://fastapi.tiangolo.com/ja/tutorial/security/): Quickly learn security concepts and authentication in FastAPI.
+- [Nested Models Tutorial](https://fastapi.tiangolo.com/de/tutorial/body-nested-models/): Learn to define, validate, and use nested models with FastAPI.
+- [Pydantic Settings Overview](https://fastapi.tiangolo.com/fr/advanced/settings/#recap): Manage application settings using Pydantic for FastAPI.
+- [FastAPI Repository Management](https://fastapi.tiangolo.com/zh/management-tasks/#mark-github-discussions-answers): Guidelines for managing FastAPI repository and discussions.
+- [Streaming JSON Lines](https://fastapi.tiangolo.com/pt/tutorial/stream-json-lines/#server-sent-events-sse): Learn how to stream JSON Lines with FastAPI.
+- [FastAPI Background Tasks](https://fastapi.tiangolo.com/reference/background/): Learn to use FastAPI's BackgroundTasks for asynchronous tasks.
+- [FastAPI Speed Benchmarks](https://fastapi.tiangolo.com/zh/benchmarks/#benchmarks-and-speed): Explore FastAPI benchmarks showcasing its exceptional speed and performance.
+- [WebSocket States](https://fastapi.tiangolo.com/ru/reference/websockets/#fastapi.websockets.WebSocketState.RESPONSE): Learn about WebSocket states and handling in FastAPI.
+- [Base64 JSON Handling](https://fastapi.tiangolo.com/de/advanced/json-base64-bytes/#pydantic-bytes-for-input-and-output-data): Learn to handle JSON with base64 encoded binary data.
+- [OpenAPI Callbacks](https://fastapi.tiangolo.com/ru/advanced/openapi-callbacks/#check-the-docs): Learn about OpenAPI callbacks for FastAPI applications.
+- [FastAPI Templates Guide](https://fastapi.tiangolo.com/zh-hant/advanced/templates/): Learn to integrate and use templates with FastAPI.
+- [OpenAPI Documentation Guide](https://fastapi.tiangolo.com/ru/how-to/general/#openapi-docs-urls): Explore FastAPI's OpenAPI documentation customization and usage tips.
+- [FastAPI Sub-Applications](https://fastapi.tiangolo.com/ja/advanced/sub-applications/): Learn to mount sub-applications in FastAPI effectively.
+- [FastAPI Metadata Configuration](https://fastapi.tiangolo.com/tutorial/metadata/#docs-urls): Learn to customize FastAPI metadata and docs URLs effectively.
+- [Global Dependencies Overview](https://fastapi.tiangolo.com/zh/tutorial/dependencies/global-dependencies/#dependencies-for-groups-of-path-operations): Learn how to implement global dependencies in FastAPI applications.
+- [HTTP and WebSocket Exceptions](https://fastapi.tiangolo.com/pt/reference/exceptions/): Handle client errors with HTTP and WebSocket exceptions.
+- [APIRouter Event Handlers](https://fastapi.tiangolo.com/ja/reference/apirouter/#fastapi.APIRouter.on_event): Reference for FastAPI APIRouter event handling methods.
+- [OpenAPI Docs Utilities](https://fastapi.tiangolo.com/uk/reference/openapi/docs/): Utilities for OpenAPI documentation using Swagger UI and ReDoc.
+- [FastAPI Licensing Information](https://fastapi.tiangolo.com/zh-hant/#license): Comprehensive guide to FastAPI and its licensing details.
+- [FastAPI Middleware Reference](https://fastapi.tiangolo.com/uk/reference/middleware/): Explore middleware options for FastAPI applications and configurations.
+- [Pydantic Field Usage](https://fastapi.tiangolo.com/ru/tutorial/body-fields/#recap): Learn to use Pydantic's Field for model validation.
+- [FastAPI Cloud Deployment](https://fastapi.tiangolo.com/uk/deployment/fastapicloud/): Easily deploy FastAPI applications using FastAPI Cloud services.
+- [FastAPI HTTPS Implementation](https://fastapi.tiangolo.com/zh-hant/deployment/https/#recap): Learn how to implement HTTPS for FastAPI applications.
+- [Get Current User](https://fastapi.tiangolo.com/zh-hant/tutorial/security/get-current-user/): Learn to retrieve current user data in FastAPI.
+- [Testing Lifespan Events](https://fastapi.tiangolo.com/zh-hant/advanced/testing-events/): Learn about testing lifespan and event handling in FastAPI.
+- [FastAPI File Uploads](https://fastapi.tiangolo.com/de/reference/uploadfile/): Learn to handle file uploads with FastAPI's UploadFile class.
+- [FastAPI Proxy Configuration](https://fastapi.tiangolo.com/uk/advanced/behind-a-proxy/#mounting-a-sub-application): Configure FastAPI applications behind proxies, including sub-applications.
+- [FastAPI Additional Status Codes](https://fastapi.tiangolo.com/zh-hant/advanced/additional-status-codes/#openapi-and-api-docs): Additional status codes in FastAPI route responses explained.
+- [Additional Status Codes](https://fastapi.tiangolo.com/tr/advanced/additional-status-codes/#openapi-and-api-docs): Learn about additional status codes in FastAPI responses.
+- [FastAPI Form Tutorial](https://fastapi.tiangolo.com/uk/tutorial/request-forms/#recap): Learn to use FastAPI's Form for handling form data.
+- [FastAPI Response Models](https://fastapi.tiangolo.com/de/tutorial/response-model/#recap): Learn to use FastAPI response models for data validation.
+- [Extending OpenAPI in FastAPI](https://fastapi.tiangolo.com/uk/how-to/extending-openapi/): Learn to extend OpenAPI in FastAPI applications easily.
+- [FastAPI Debugging Guide](https://fastapi.tiangolo.com/es/tutorial/debugging/#run-your-code-with-your-debugger): Guide to debugging FastAPI applications with your debugger.
+- [FastAPI Metadata Tutorial](https://fastapi.tiangolo.com/ja/tutorial/metadata/): Learn to customize FastAPI application metadata settings effectively.
+- [Extra Data Types](https://fastapi.tiangolo.com/zh/tutorial/extra-data-types/): Explore FastAPI's advanced data types for effective API development.
+- [File Upload in FastAPI](https://fastapi.tiangolo.com/ko/tutorial/request-files/#recap): Learn to upload files using FastAPI forms effectively.
+- [Cookie Management in FastAPI](https://fastapi.tiangolo.com/ja/tutorial/cookie-param-models/#summary): Learn to use Pydantic models for cookie management in FastAPI.
+- [Global Dependencies in FastAPI](https://fastapi.tiangolo.com/fr/tutorial/dependencies/global-dependencies/): Learn to implement global dependencies in FastAPI applications.
+- [Additional Status Codes](https://fastapi.tiangolo.com/ru/advanced/additional-status-codes/#openapi-and-api-docs): Learn to return additional HTTP status codes using FastAPI.
+- [FastAPI Status Codes](https://fastapi.tiangolo.com/es/reference/status/#fastapi.status.WS_1015_TLS_HANDSHAKE): Quick access to FastAPI HTTP and WebSocket status codes.
+- [FastAPI Extra Data Types](https://fastapi.tiangolo.com/zh-hant/tutorial/extra-data-types/#example): Learn about additional data types in FastAPI for enhanced development.
+- [FastAPI Proxy Configuration](https://fastapi.tiangolo.com/ko/advanced/behind-a-proxy/#mounting-a-sub-application): Guide to configuring FastAPI behind different types of proxies.
+- [Python Type Hints](https://fastapi.tiangolo.com/zh/python-types/): Explore Python type hints and their advantages for FastAPI.
+- [FastAPI Form Models](https://fastapi.tiangolo.com/tutorial/request-form-models/#summary): Learn to use Pydantic models for FastAPI form fields.
+- [JSON Encoder Guide](https://fastapi.tiangolo.com/pt/tutorial/encoder/#using-the-jsonable-encoder): Learn to use FastAPI's JSON-compatible encoder function.
+- [CORS in FastAPI](https://fastapi.tiangolo.com/zh-hant/tutorial/cors/#more-info): Learn CORS setup and usage in FastAPI applications.
+- [FastAPI Background Tasks](https://fastapi.tiangolo.com/tr/tutorial/background-tasks/#recap): Learn how to implement background tasks in FastAPI.
+- [Path Operation Configuration](https://fastapi.tiangolo.com/es/tutorial/path-operation-configuration/): Learn how to configure path operations in FastAPI effectively.
+- [FastAPI Dependency Management](https://fastapi.tiangolo.com/zh-hant/reference/dependencies/#fastapi.Security): Explore FastAPI dependency management with Depends and Security.
+- [FastAPI Alternatives Overview](https://fastapi.tiangolo.com/zh/alternatives/): Explore frameworks compared to FastAPI and their inspirations.
+- [FastAPI Form Data](https://fastapi.tiangolo.com/zh/tutorial/request-forms/): Learn how to handle form data in FastAPI requests.
+- [FastAPI Request Overview](https://fastapi.tiangolo.com/ko/reference/request/#fastapi.Request.send_push_promise): Access raw HTTP request properties and methods in FastAPI.
+- [Change Status Code](https://fastapi.tiangolo.com/advanced/response-change-status-code/): Learn how to change FastAPI response status codes effectively.
+- [FastAPI API Metadata](https://fastapi.tiangolo.com/uk/tutorial/metadata/#docs-urls): Learn to customize API metadata in FastAPI applications.
+- [FastAPI Docker Deployment](https://fastapi.tiangolo.com/fr/deployment/docker/#recap): Deploying FastAPI applications using Docker containers effectively.
+- [FastAPI Tutorial Guide](https://fastapi.tiangolo.com/tr/tutorial/): Step-by-step tutorial for using FastAPI with examples.
+- [FastAPI Dependency with Yield](https://fastapi.tiangolo.com/tr/tutorial/dependencies/dependencies-with-yield/#using-context-managers-in-dependencies-with-yield): Learn to use yield for dependency management in FastAPI.
+- [Swagger UI Configuration](https://fastapi.tiangolo.com/uk/how-to/configure-swagger-ui/#javascript-only-settings): Configure Swagger UI settings for FastAPI applications easily.
+- [FastAPI Security Tools](https://fastapi.tiangolo.com/pt/reference/security/): Comprehensive security tools for FastAPI authentication methods.
+- [HTTP Basic Auth](https://fastapi.tiangolo.com/advanced/security/http-basic-auth/#return-the-error): Guide on implementing HTTP Basic Auth with error handling.
+- [FastAPI JSON Encoders](https://fastapi.tiangolo.com/zh-hant/reference/encoders/): Learn how to convert objects into JSON format using FastAPI.
+- [FastAPI Jinja2 Templates](https://fastapi.tiangolo.com/ru/advanced/templates/#more-details): Learn to use Jinja2 templates with FastAPI for rendering.
+- [Change Response Status](https://fastapi.tiangolo.com/tr/advanced/response-change-status-code/#use-a-response-parameter): Learn how to change HTTP response status codes in FastAPI.
+- [Global Dependencies Overview](https://fastapi.tiangolo.com/de/tutorial/dependencies/global-dependencies/): Learn about global dependencies in FastAPI applications.
+- [FastAPI Sub-Dependencies](https://fastapi.tiangolo.com/ko/tutorial/dependencies/sub-dependencies/): Learn about sub-dependencies in FastAPI's dependency injection system.
+- [Extra Data Types](https://fastapi.tiangolo.com/ko/tutorial/extra-data-types/#example): Explore advanced data types in FastAPI for applications.
+- [FastAPI Features Overview](https://fastapi.tiangolo.com/zh-hant/features/): Explore FastAPI features for modern Python web development.
+- [FastAPI Middleware Overview](https://fastapi.tiangolo.com/pt/reference/middleware/#fastapi.middleware.trustedhost.TrustedHostMiddleware.www_redirect): Explore FastAPI middleware, including trusted host redirection.
+- [FastAPI Testing Guide](https://fastapi.tiangolo.com/tr/tutorial/testing/#run-it): Comprehensive guide for testing FastAPI applications effectively.
+- [FastAPI OAuth2 Security](https://fastapi.tiangolo.com/ja/tutorial/security/first-steps/#recap): Learn how to implement OAuth2 security in FastAPI.
+- [About FastAPI](https://fastapi.tiangolo.com/es/about/): Information about FastAPI's design, inspiration, and more.
+- [FastAPI OpenAPI Models](https://fastapi.tiangolo.com/uk/reference/openapi/models/#fastapi.openapi.models.OpenAPI.model_config): Detailed OpenAPI models and configuration options for FastAPI.
+- [Cookie Parameter Tutorial](https://fastapi.tiangolo.com/uk/tutorial/cookie-params/): Learn to define cookie parameters in FastAPI applications.
+- [FastAPI Path Dependencies](https://fastapi.tiangolo.com/zh/tutorial/dependencies/dependencies-in-path-operation-decorators/#global-dependencies): Learn about using dependencies in FastAPI path operations.
+- [FastAPI Sub-Dependencies](https://fastapi.tiangolo.com/ko/tutorial/dependencies/sub-dependencies/): Understanding and implementing sub-dependencies in FastAPI framework.
+- [FastAPI Form Models](https://fastapi.tiangolo.com/zh-hant/tutorial/request-form-models/): Learn to declare form fields in FastAPI using Pydantic models.
+- [FastAPI Design and Future](https://fastapi.tiangolo.com/fr/history-design-future/#future): FastAPI's journey, design principles, and promising future outlook.
+- [FastAPI APIRouter Overview](https://fastapi.tiangolo.com/ko/reference/apirouter/#fastapi.APIRouter.on_event): Overview of FastAPI APIRouter and event handling methods.
+- [Extra Models Tutorial](https://fastapi.tiangolo.com/es/tutorial/extra-models/): Explore how to manage multiple Pydantic models in FastAPI.
+- [Background Tasks in FastAPI](https://fastapi.tiangolo.com/es/tutorial/background-tasks/#recap): Define and manage background tasks in FastAPI applications.
+- [FastAPI Form Models](https://fastapi.tiangolo.com/ja/tutorial/request-form-models/): Learn to create and manage form models in FastAPI.
+- [FastAPI Benchmarks](https://fastapi.tiangolo.com/es/benchmarks/): FastAPI benchmarks highlighting its performance and features.
+- [About FastAPI](https://fastapi.tiangolo.com/fr/about/): Learn about FastAPI's design, inspiration, and purpose.

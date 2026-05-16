@@ -1,0 +1,26 @@
+---
+description: Ollama and local LLM integration standards
+globs: "**/*.py"
+---
+
+# Ollama & Local LLM Rules
+
+## Model Usage
+- Only the local Llama 3.2 3B Instruct Q4_K_S GGUF model via Ollama is permitted.
+- Never call cloud LLMs (OpenAI, Anthropic, Gemini, etc.).
+- The model must be registered via the Ollama container's entrypoint script using the provided Modelfile.
+
+## API Calls
+- From FastAPI, Ollama is reached at `http://ollama:11434`.
+- All calls to Ollama must use the `/api/generate` endpoint with `stream: false` and `format: "json"`.
+- The prompt must include the system prompt from `prompts/entity_extraction.txt` or `prompts/justification.txt` as appropriate.
+- Temperature must be set to 0.1 for deterministic extraction.
+
+## Error Handling & Retries
+- On non-JSON or malformed JSON response, retry once with a stricter prompt that includes a concrete example of the expected JSON.
+- After two consecutive failures, set the procurement log status to `LLM_FAILED` and flag the request for human review (`NeedsReview`).
+- Never write unvalidated LLM output to the database.
+
+## Environment Configuration
+- The FastAPI service must read `OLLAMA_BASE_URL` and `OLLAMA_MODEL` from the environment (set in `.env` and passed via `docker-compose.yml`).
+- The LM Studio model path is mounted via `LM_STUDIO_MODELS_PATH` in the Ollama service; this must match the host's LM Studio models directory.

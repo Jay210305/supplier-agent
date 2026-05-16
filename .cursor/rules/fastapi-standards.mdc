@@ -1,0 +1,52 @@
+---
+description: FastAPI backend development standards
+globs: "backend/**/*.py"
+---
+
+# FastAPI Backend Rules
+
+## Application Structure
+- The main entry point is `backend/main.py` which creates the FastAPI app and includes routers.
+- All routers must be placed in `backend/routers/` and follow the naming convention: `procurement.py`, `suppliers.py`, `orders.py`.
+- Services (business logic) must be in `backend/services/` (e.g., `ollama_client.py`, `scoring.py`, `pdf_generator.py`).
+- Pydantic v2 schemas must be in `backend/schemas/` and used for request/response validation and ORM mapping where appropriate.
+- Database session management must be in `backend/db/session.py`.
+- Alembic configuration is in `backend/alembic.ini` and `backend/alembic/`.
+
+## Dependency Injection
+- Use FastAPI's `Depends` for database sessions and service objects.
+- Never create database sessions or service instances directly in route functions without dependency injection.
+
+## Environment Configuration
+- The backend must read configuration from environment variables via Pydantic Settings (`backend/core/config.py` or similar, but as per the current structure, we use `.env` and `os.getenv` or a settings class).
+- The `.env` file must not be committed; only `.env.example` is tracked.
+
+## Error Handling
+- Use FastAPI's HTTPException for known error conditions.
+- Catch-all exceptions must return a 500 error with a generic message (do not leak internal details).
+- All endpoints must have response models defined.
+
+## Rate Limiting
+- The `/procurement/parse` endpoint must be rate-limited to 10 requests per minute using `slowapi` to prevent overloading the Ollama service.
+
+## Ollama Integration
+- The Ollama client must be a singleton or dependency-injected service that wraps the HTTP calls to `http://ollama:11434`.
+- It must handle retries and timeouts appropriately.
+
+## PDF Generation
+- WeasyPrint must be used for PDF generation in `services/pdf_generator.py`.
+- The generated PDFs must be stored in the volume mounted at `/app/generated_pos` (as per docker-compose) and the path saved in the database.
+
+## Health Check
+- The `/health` endpoint must return 200 only when both the database and Ollama are reachable; otherwise, return 503.
+
+## CORS
+- The frontend is served via nginx on the same domain (through proxy) so CORS may not be required, but if the frontend is served separately, configure CORS to allow the frontend origin.
+
+## Secrets
+- Never hardcode secrets; they must come from the environment (via `.env` and passed to the container).
+- The `SECRET_KEY` must be a long random string and used for signing tokens if needed.
+
+## Testing
+- Unit tests must be in `backend/tests/` and use pytest and pytest-asyncio.
+- Tests must not depend on external services; use mocks for Ollama and the database.
