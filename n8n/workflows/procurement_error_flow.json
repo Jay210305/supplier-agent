@@ -1,0 +1,44 @@
+{
+  "name": "Procurement Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c1000001-0001-4000-8000-000000000001",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "compras@mype.com.pe",
+        "toEmail": "compras@mype.com.pe",
+        "subject": "=n8n workflow error: {{ $json.workflow.name }}",
+        "emailType": "text",
+        "message": "=A procurement workflow execution failed.\n\nWorkflow: {{ $json.workflow.name }}\nExecution ID: {{ $json.execution.id }}\nLast node: {{ $json.execution.lastNodeExecuted }}\nError: {{ $json.execution.error.message }}\n\nOpen n8n → Executions for full details."
+      },
+      "id": "c1000001-0002-4000-8000-000000000002",
+      "name": "Admin Error Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [280, 300],
+      "credentials": {
+        "smtp": {
+          "id": "CONFIGURE_SMTP",
+          "name": "Gmail SMTP (compras)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [[{ "node": "Admin Error Email", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "phase5-procurement-error-v1"
+}

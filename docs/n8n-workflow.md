@@ -1,18 +1,12 @@
-# n8n Workflow
+# Workflow n8n
 
-## Current workflow file
-`n8n/workflows/procurement_flow.json`
+## Archivo actual
+- `n8n/workflows/procurement_flow.json`
 
-## Import
-1. Open n8n at http://localhost:5678
-2. Import the workflow JSON from the file above
+## Importacion
+1. Levanta la pila: `docker compose up -d`
+2. Abre http://localhost:5678
+3. **Workflows -> Import from file** -> `procurement_flow.json`
 
-## Current behavior
-The workflow contains a single Manual Trigger node with no connections. It is ready for manual execution and can be expanded with HTTP Request nodes targeting FastAPI.
-
-## FastAPI endpoints (inside Docker network)
-- http://fastapi:8000/procurement/parse
-- http://fastapi:8000/orders/generate
-
-## n8n database
-n8n stores state in Postgres using the connection configured in docker-compose.yml.
+## Flujo actual
+El workflow contiene un solo nodo **Manual Trigger** sin conexiones. Sirve como base para ejecuciones manuales.

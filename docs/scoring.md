@@ -1,17 +1,17 @@
-# Supplier Matching and Scoring
+# Emparejamiento y scoring
 
-## Matching candidates
-For each procurement item, FastAPI searches supplier catalogs and selects a best product candidate per supplier:
-- Token match: every token (len >= 2) from the item name must appear in the product name or description.
-- Availability: `available_stock >= quantity` and `minimum_order_quantity <= quantity`.
-- Best product per line: lowest extended total, then lowest lead time.
+## Matching de candidatos
+Para cada item de procurement, FastAPI busca en catalogos y elige el mejor producto por proveedor:
+- Token match: cada token (len >= 2) del item debe aparecer en el nombre o descripcion del producto.
+- Disponibilidad: `available_stock >= quantity` y `minimum_order_quantity <= quantity`.
+- Mejor producto por linea: menor total extendido, luego menor lead time.
 
-A supplier is eligible only if:
-- All items can be fulfilled by that supplier
-- Total extended cost is within the max budget
-- Delivery deadline is met (if provided)
+Un proveedor es elegible solo si:
+- Puede cubrir todos los items
+- El total extendido esta dentro del presupuesto
+- Cumple con la fecha limite (si existe)
 
-## WLC scoring
+## WLC
 Weighted Linear Combination (WLC):
 
 ```
@@ -22,12 +22,12 @@ Delivery_Score    = 1 - (lead_time_days / max_lead_time_in_pool)
 Reliability_Score = rating / 10.0
 ```
 
-## Ranking tie-breaker
-Suppliers are ranked by:
-1. Higher WLC score
-2. Lower extended total
-3. Lower bottleneck lead time
-4. Higher supplier id
+## Desempate
+Orden de ranking:
+1. Mayor WLC
+2. Menor total extendido
+3. Menor lead time cuello de botella
+4. Mayor id de proveedor
 
-## LLM justification
-The top 3 suppliers are sent to Ollama with the justification prompt. If Ollama recommends a supplier not in the top 3 pool, FastAPI falls back to the top-ranked supplier.
+## Justificacion LLM
+Los top 3 proveedores se envian a Ollama con el prompt de justificacion. Si Ollama recomienda un proveedor fuera del top 3, FastAPI usa el top 1.

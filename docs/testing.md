@@ -1,13 +1,13 @@
-# Testing
+# Pruebas
 
-## Run tests (inside Docker)
+## Ejecutar tests (dentro de Docker)
 ```
 docker compose exec fastapi pytest
 ```
 
-## Coverage
-- Procurement router tests (LLM extraction + budget estimate)
-- Orders router tests (PO generation response)
-- Ollama client tests (retry and validation logic)
-- WLC scoring tests
-- PDF generation tests
+## Cobertura
+- Tests del router de procurement (extraccion LLM + estimacion)
+- Tests del router de orders (respuesta de generacion de PO)
+- Tests del cliente Ollama (reintentos y validacion)
+- Tests de scoring WLC
+- Tests de generacion PDF

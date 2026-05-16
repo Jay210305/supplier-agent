@@ -1,35 +1,35 @@
 # Supplier Agent
 
-Supplier Agent is an intelligent e-procurement assistant for MYPES. It runs fully in Docker and uses a local LLM (Ollama) to parse procurement requests, score suppliers, and generate purchase orders (PDF).
+Supplier Agent es un asistente de compras para MYPES. Todo corre en Docker y usa un LLM local (Ollama) para extraer solicitudes, evaluar proveedores y generar ordenes de compra (PDF).
 
-## Quick start
-1. Ensure Docker Desktop/Engine is running.
-2. Start the stack:
+## Inicio rapido
+1. Asegura que Docker Desktop/Engine este en ejecucion.
+2. Levanta la pila:
 
 ```
 docker compose up -d
 ```
 
-3. Check health:
+3. Verifica salud:
 
 ```
 curl http://localhost:8000/health
 ```
 
-GPU (Linux only): run `./setup.sh`, then:
+GPU (solo Linux): ejecuta `./setup.sh`, luego:
 
 ```
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 ```
 
-## Documentation
-- docs/quickstart.md
-- docs/architecture.md
-- docs/backend-api.md
-- docs/data-model.md
-- docs/ollama.md
-- docs/scoring.md
-- docs/pdf-generation.md
-- docs/n8n-workflow.md
-- docs/frontend.md
-- docs/testing.md
+## Documentacion
+- [docs/quickstart.md](docs/quickstart.md)
+- [docs/architecture.md](docs/architecture.md)
+- [docs/backend-api.md](docs/backend-api.md)
+- [docs/data-model.md](docs/data-model.md)
+- [docs/ollama.md](docs/ollama.md)
+- [docs/scoring.md](docs/scoring.md)
+- [docs/pdf-generation.md](docs/pdf-generation.md)
+- [docs/n8n-workflow.md](docs/n8n-workflow.md)
+- [docs/frontend.md](docs/frontend.md)
+- [docs/testing.md](docs/testing.md)

@@ -6,9 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.session import get_db
-from schemas.procurement_request import ProcurementRequestExtracted
-from schemas.purchase_order import OrderGenerateResponse
+from schemas.purchase_order import (
+    OrderApproveBody,
+    OrderApproveResponse,
+    OrderGenerateBody,
+    OrderGenerateResponse,
+)
 from services.ollama_client import OllamaClient
+from services.order_approval import PurchaseOrderNotFoundError, approve_purchase_order
 from services.order_generation import (
     DuplicateRequestError,
     LLMUnavailableError,
@@ -31,7 +36,7 @@ async def ping() -> dict[str, str]:
 
 @router.post("/generate", response_model=OrderGenerateResponse)
 async def generate_order(
-    body: ProcurementRequestExtracted,
+    body: OrderGenerateBody,
     db: AsyncSession = Depends(get_db),
 ) -> OrderGenerateResponse:
     try:
@@ -54,3 +59,17 @@ async def generate_order(
         runner_up_supplier_id=result.runner_up_supplier_id,
         scoring_snapshot=result.scoring_snapshot,
     )
+
+
+@router.patch("/{request_id}/approve", response_model=OrderApproveResponse)
+async def approve_order(
+    request_id: str,
+    body: OrderApproveBody,
+    db: AsyncSession = Depends(get_db),
+) -> OrderApproveResponse:
+    try:
+        return await approve_purchase_order(db, request_id, body)
+    except PurchaseOrderNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e

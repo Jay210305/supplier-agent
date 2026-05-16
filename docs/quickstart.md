@@ -1,22 +1,36 @@
-# Quickstart
+# Inicio rapido
 
-## Prerequisites
-- Docker Desktop or Docker Engine
+## Requisitos
+- Docker Desktop o Docker Engine
 
-## Run the stack
+## Levantar la pila
 ```
 docker compose up -d
 ```
 
-## Health check
+## Chequeo de salud
 ```
 curl http://localhost:8000/health
 ```
 
-A healthy response returns HTTP 200 with status for Postgres and Ollama.
+Una respuesta sana devuelve HTTP 200 con estado para Postgres y Ollama.
 
-## Optional .env overrides
-FastAPI loads a `.env` file if present. Docker Compose already provides default values, but you can override them with:
+## Migraciones
+El contenedor `fastapi` ejecuta `alembic upgrade head` al iniciar. Si necesitas correrlo manualmente:
+
+```
+docker compose exec fastapi alembic upgrade head
+```
+
+## Datos de ejemplo
+Carga proveedores y productos demo. Esto borra proveedores, productos y logs existentes.
+
+```
+docker compose exec fastapi python db/seed.py
+```
+
+## Variables .env (opcional)
+FastAPI carga un archivo `.env` si existe. Docker Compose ya define defaults, pero puedes sobrescribirlos:
 
 ```
 POSTGRES_HOST=postgres
@@ -31,21 +45,21 @@ OLLAMA_MODEL=llama3.2:3b
 GENERATED_POS_DIR=/app/generated_pos
 ```
 
-## Ports (host)
-- 8000: FastAPI API
+## Puertos (host)
+- 8000: API FastAPI
 - 11434: Ollama
 - 5678: n8n
 - 3000: Frontend (nginx)
 - 5432: Postgres
 
-## GPU setup (Linux only)
-Run the helper script to configure NVIDIA Container Toolkit:
+## GPU (solo Linux)
+Ejecuta el script de apoyo para NVIDIA Container Toolkit:
 
 ```
 bash setup.sh
 ```
 
-Then start with GPU override:
+Luego levanta con override de GPU:
 
 ```
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d

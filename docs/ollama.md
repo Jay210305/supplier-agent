@@ -1,8 +1,8 @@
-# Ollama Integration
+# Integracion con Ollama
 
 ## Runtime
 - Service: ollama (Docker)
-- Base URL (inside network): http://ollama:11434
+- Base URL (red interna): http://ollama:11434
 - Base URL (host): http://localhost:11434
 - Model tag: llama3.2:3b
 
@@ -10,10 +10,10 @@
 - prompts/entity_extraction.txt
 - prompts/justification.txt
 
-FastAPI loads prompts from the repo or from `/prompts` (mounted in Docker).
+FastAPI carga prompts desde el repo o desde `/prompts` (montado en Docker).
 
 ## Request format
-FastAPI uses `POST /api/generate` with JSON format:
+FastAPI usa `POST /api/generate` con JSON:
 
 ```
 {
@@ -28,12 +28,12 @@ FastAPI uses `POST /api/generate` with JSON format:
 }
 ```
 
-## Retry behavior
-- If the response is not valid JSON or fails Pydantic validation, FastAPI retries once with a stricter prompt suffix.
-- If the second attempt fails, the API returns an error (422 for /procurement/parse or /orders/generate).
+## Reintento
+- Si la respuesta no es JSON valido o falla validacion Pydantic, FastAPI reintenta una vez con un sufijo mas estricto.
+- Si el segundo intento falla, el API devuelve error (422 en /procurement/parse o /orders/generate).
 
-## Output shapes
-Entity extraction (validated by Pydantic):
+## Salidas esperadas
+Extraccion de entidades (validada por Pydantic):
 ```
 {
   "request_id": "REQ-2026-001",
@@ -47,11 +47,11 @@ Entity extraction (validated by Pydantic):
 }
 ```
 
-Justification output:
+Salida de justificacion:
 ```
 {
   "recommended_supplier_id": 12,
-  "justification": "Meets deadline and budget.",
+  "justification": "Cumple plazo y presupuesto.",
   "runner_up_supplier_id": 7
 }
 ```

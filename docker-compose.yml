@@ -112,6 +112,8 @@ services:
       DB_POSTGRESDB_USER: mypes_user
       DB_POSTGRESDB_PASSWORD: changeme
       N8N_ENCRYPTION_KEY: change_this_to_a_random_32char_string
+      EXECUTIONS_DATA_SAVE_ON_ERROR: all
+      GENERIC_TIMEZONE: America/Lima
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n/workflows:/home/node/.n8n/workflows

@@ -36,9 +36,11 @@ def test_orders_generate_success(mock_gen: AsyncMock, client: TestClient) -> Non
     )
     body = {
         "request_id": "REQ-2026-042",
+        "supplier_id": 3,
         "items": [{"product": "Laptop", "quantity": 1}],
         "constraints": {"max_budget": "50000.00", "currency": "PEN", "delivery_before": None},
         "priority": "high",
+        "justification": "Pre-selected by n8n scoring flow.",
     }
     r = client.post("/orders/generate", json=body)
     assert r.status_code == 200
@@ -46,3 +48,34 @@ def test_orders_generate_success(mock_gen: AsyncMock, client: TestClient) -> Non
     assert data["purchase_order_id"] == 99
     assert data["supplier_id"] == 3
     assert data["pdf_path"] is not None
+
+
+@patch("routers.orders.approve_purchase_order", new_callable=AsyncMock)
+def test_orders_approve_success(mock_approve: AsyncMock, client: TestClient) -> None:
+    from models.enums import PurchaseOrderStatus
+    from schemas.purchase_order import OrderApproveResponse
+
+    mock_approve.return_value = OrderApproveResponse(
+        purchase_order_id=99,
+        request_id="REQ-2026-042",
+        status=PurchaseOrderStatus.APPROVED,
+        approved_by="manager@mype.com.pe",
+        pdf_path="generated_pos/PO_REQ-2026-042.pdf",
+        total_amount=Decimal("3539.88"),
+        currency="PEN",
+    )
+    r = client.patch(
+        "/orders/REQ-2026-042/approve",
+        json={"status": "Approved", "approved_by": "manager@mype.com.pe"},
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "APPROVED"
+
+
+@patch("routers.orders.approve_purchase_order", new_callable=AsyncMock)
+def test_orders_approve_not_found(mock_approve: AsyncMock, client: TestClient) -> None:
+    from services.order_approval import PurchaseOrderNotFoundError
+
+    mock_approve.side_effect = PurchaseOrderNotFoundError("missing")
+    r = client.patch("/orders/REQ-MISSING/approve", json={"status": "Approved"})
+    assert r.status_code == 404

@@ -1,27 +1,27 @@
-# PDF Generation
+# Generacion PDF
 
-## Service
-The PDF generator uses WeasyPrint to create a purchase order PDF from HTML.
+## Servicio
+El generador PDF usa WeasyPrint para crear una orden de compra desde HTML.
 
-## Output location
-- Container path: `/app/generated_pos`
-- Stored DB path: `generated_pos/<filename>`
+## Ubicacion de salida
+- Ruta en contenedor: `/app/generated_pos`
+- Ruta almacenada en DB: `generated_pos/<filename>`
 
-## File naming
+## Nombre de archivo
 ```
 PO_<request_id>_<YYYYMMDD_HHMMSS>.pdf
 ```
 
-## Totals
-The PDF includes totals in PEN:
-- Subtotal (sum of quantity * unit_price)
+## Totales
+El PDF incluye totales en PEN:
+- Subtotal (suma de cantidad * unit_price)
 - IGV 18%
-- Grand total
+- Total
 
-## Included fields
-The document includes:
-- PO number (request_id)
-- Date
-- Supplier name, RUC, and email
-- Item table with quantity, unit price, and line totals
-- Subtotal, IGV, total
+## Campos incluidos
+El documento incluye:
+- Numero de OC (request_id)
+- Fecha
+- Nombre de proveedor, RUC y email
+- Tabla de items con cantidad, precio unitario y subtotal
+- Subtotal, IGV y total

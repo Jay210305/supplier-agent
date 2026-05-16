@@ -2,10 +2,10 @@
 
 ## Stack
 - React 18 + Vite
-- Served by nginx in Docker
+- Servido por nginx en Docker
 
-## Current UI
-The UI is a placeholder page that confirms the API is available at `/api` via nginx.
+## UI actual
+La UI es un placeholder que confirma que la API esta disponible en `/api` via nginx.
 
-## API proxy
-nginx proxies `/api/` to the FastAPI service at `http://fastapi:8000/`.
+## Proxy API
+nginx proxya `/api/` hacia el servicio FastAPI en `http://fastapi:8000/`.

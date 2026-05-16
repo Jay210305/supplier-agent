@@ -1,10 +1,10 @@
-# Data Model
+# Modelo de datos
 
 ## suppliers
 - id: integer, primary key
 - company_name: varchar(255), required
-- ruc: varchar(11), unique, 11 digits only
-- email: varchar(255), unique, required
+- ruc: varchar(11), unico, 11 digitos
+- email: varchar(255), unico, required
 - phone: varchar(20), optional
 - address: varchar(512), optional
 - rating: numeric(4,2), default 5.00
@@ -17,7 +17,7 @@
 - supplier_id: integer, FK suppliers.id, on delete cascade
 - name: varchar(255), required
 - description: varchar(2000), optional
-- sku: varchar(64), required, unique per supplier
+- sku: varchar(64), required, unico por proveedor
 - unit_price: numeric(12,2), non-negative
 - currency: varchar(3), default PEN
 - lead_time_days: integer, non-negative
@@ -29,9 +29,9 @@
 
 ## purchase_orders
 - id: integer, primary key
-- request_id: varchar(64), unique
+- request_id: varchar(64), unico
 - supplier_id: integer, FK suppliers.id, on delete restrict
-- status: string enum PENDING | APPROVED | SENT
+- status: enum PENDING | APPROVED | SENT
 - currency: varchar(3), default PEN
 - total_amount: numeric(12,2), optional
 - payload: jsonb, optional
@@ -48,5 +48,5 @@
 - event_source: varchar(128), optional
 - message: varchar(2000), optional
 - payload: jsonb, optional
-- severity: string enum DEBUG | INFO | WARNING | ERROR
+- severity: enum DEBUG | INFO | WARNING | ERROR
 - created_at: timestamptz

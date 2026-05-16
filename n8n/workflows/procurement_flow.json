@@ -1,0 +1,515 @@
+{
+  "name": "Procurement Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "INBOX",
+        "postProcessAction": "read",
+        "format": "simple",
+        "downloadAttachments": false,
+        "options": {
+          "customEmailConfig": "[\"UNSEEN\"]",
+          "forceReconnect": 1
+        }
+      },
+      "id": "a1000001-0001-4000-8000-000000000001",
+      "name": "Email Trigger (IMAP)",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.1,
+      "position": [0, 300],
+      "credentials": {
+        "imap": {
+          "id": "CONFIGURE_GMAIL_IMAP",
+          "name": "Gmail IMAP (compras)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const item = $input.item.json;\nconst raw = item.textHtml || item.html || item.textPlain || item.text || '';\nlet text = raw;\nif (/<[a-z][\\s\\S]*>/i.test(String(raw))) {\n  text = String(raw)\n    .replace(/<style[^>]*>[\\s\\S]*?<\\/style>/gi, '')\n    .replace(/<script[^>]*>[\\s\\S]*?<\\/script>/gi, '')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\nif (!text && item.textPlain) {\n  text = String(item.textPlain).trim();\n}\nreturn { json: { ...item, text } };"
+      },
+      "id": "a1000001-0002-4000-8000-000000000002",
+      "name": "HTML-to-Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://fastapi:8000/procurement/parse",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email_body: $json.text }) }}",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "a1000001-0003-4000-8000-000000000003",
+      "name": "Parse Procurement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "compras@mype.com.pe",
+        "toEmail": "compras@mype.com.pe",
+        "subject": "=Procurement parse failed: {{ $('Email Trigger (IMAP)').item.json.subject || 'email' }}",
+        "emailType": "text",
+        "message": "=FastAPI /procurement/parse failed.\n\nError: {{ JSON.stringify($json) }}\n\nCheck Ollama (docker compose logs ollama) and FastAPI logs."
+      },
+      "id": "a1000001-0004-4000-8000-000000000004",
+      "name": "Admin Alert Parse Error",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [720, 120],
+      "credentials": {
+        "smtp": {
+          "id": "CONFIGURE_SMTP",
+          "name": "Gmail SMTP (compras)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "budget-exceeded",
+              "leftValue": "={{ $json.budget_exceeded }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000001-0005-4000-8000-000000000005",
+      "name": "Budget Exceeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "fromEmail": "compras@mype.com.pe",
+        "toEmail": "compras@mype.com.pe",
+        "subject": "=Budget Alert: Procurement Request {{ $json.request_id }} Exceeds Budget",
+        "emailType": "text",
+        "message": "=Budget exceeded for procurement request.\n\nRequest ID: {{ $json.request_id }}\nItems: {{ JSON.stringify($json.items) }}\nEstimated minimum total (PEN): {{ $json.estimated_minimum_total }}\nBudget limit (PEN): {{ $json.constraints.max_budget }}\n\nPlease review manually before placing an order."
+      },
+      "id": "a1000001-0006-4000-8000-000000000006",
+      "name": "Budget Alert Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [960, 260],
+      "credentials": {
+        "smtp": {
+          "id": "CONFIGURE_SMTP",
+          "name": "Gmail SMTP (compras)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://fastapi:8000/scoring/score_suppliers",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ procurement_request: { request_id: $('Parse Procurement').item.json.request_id, items: $('Parse Procurement').item.json.items, constraints: $('Parse Procurement').item.json.constraints, priority: $('Parse Procurement').item.json.priority }, top_n: 3 }) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "a1000001-0008-4000-8000-000000000008",
+      "name": "Score Suppliers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 520],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://fastapi:8000/scoring/justification",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ top_suppliers: $json.top_suppliers, procurement_request: $json.procurement_request }) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "a1000001-0009-4000-8000-000000000009",
+      "name": "Get Justification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 520],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://fastapi:8000/orders/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ request_id: $json.request_id, supplier_id: $json.recommended_supplier_id, items: $json.items, constraints: $json.constraints, priority: $json.priority, justification: $json.justification, runner_up_supplier_id: $json.runner_up_supplier_id }) }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "a1000001-0007-4000-8000-000000000007",
+      "name": "Generate PO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 520],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "httpMethod": "GET",
+        "responseMode": "onReceived",
+        "responseData": "={{ JSON.stringify({ message: 'Waiting for approval...', options: ['Approve', 'Reject', 'Needs Review'], approve: $execution.resumeUrl + '?decision=Approve&approved_by=manager', reject: $execution.resumeUrl + '?decision=Reject&approved_by=manager', needs_review: $execution.resumeUrl + '?decision=Needs%20Review&approved_by=manager' }) }}",
+        "options": {
+          "webhookSuffix": "={{ $('Parse Procurement').item.json.request_id }}"
+        },
+        "limitWaitTime": true,
+        "limitType": "afterTimeInterval",
+        "resumeAmount": 24,
+        "resumeUnit": "hours"
+      },
+      "id": "a1000001-0010-4000-8000-000000000010",
+      "name": "Wait for Approval",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1680, 520],
+      "webhookId": "b2000001-0010-4000-8000-000000000010"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const parse = $('Parse Procurement').item.json;\nconst po = $('Generate PO').item.json;\nconst q = $input.item.json.query || {};\nconst decision = String(q.decision || q.status || 'Approve').trim();\nreturn {\n  json: {\n    ...po,\n    request_id: parse.request_id,\n    approval_decision: decision,\n    approved_by: q.approved_by || 'n8n_workflow',\n    items: parse.items,\n    constraints: parse.constraints,\n  },\n};"
+      },
+      "id": "a1000001-0011-4000-8000-000000000011",
+      "name": "Normalize Approval",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1920, 520]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://fastapi:8000/orders/{{ $json.request_id }}/approve",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: $json.approval_decision, approved_by: $json.approved_by, approved_at: new Date().toISOString() }) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "a1000001-0012-4000-8000-000000000012",
+      "name": "Update PO Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2160, 520]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-approved",
+              "leftValue": "={{ $('Normalize Approval').item.json.approval_decision }}",
+              "rightValue": "Approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000001-0013-4000-8000-000000000013",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2400, 520]
+    },
+    {
+      "parameters": {
+        "fromEmail": "compras@mype.com.pe",
+        "toEmail": "={{ $('Email Trigger (IMAP)').item.json.from?.value?.[0]?.address || 'compras@mype.com.pe' }}",
+        "subject": "=Purchase Order Approved: {{ $json.request_id }}",
+        "emailType": "text",
+        "message": "=Your purchase order has been approved.\n\nRequest ID: {{ $json.request_id }}\nStatus: {{ $json.status }}\nTotal (PEN): {{ $json.total_amount }}\nPDF: {{ $json.pdf_path }}\n\nThe PO will be dispatched to the supplier."
+      },
+      "id": "a1000001-0014-4000-8000-000000000014",
+      "name": "Send PO Approved Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [2640, 400],
+      "credentials": {
+        "smtp": {
+          "id": "CONFIGURE_SMTP",
+          "name": "Gmail SMTP (compras)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-rejected",
+              "leftValue": "={{ $('Normalize Approval').item.json.approval_decision }}",
+              "rightValue": "Reject",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000001-0015-4000-8000-000000000015",
+      "name": "Rejected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2640, 640]
+    },
+    {
+      "parameters": {
+        "fromEmail": "compras@mype.com.pe",
+        "toEmail": "={{ $('Email Trigger (IMAP)').item.json.from?.value?.[0]?.address || 'compras@mype.com.pe' }}",
+        "subject": "=Purchase Order Rejected: {{ $json.request_id }}",
+        "emailType": "text",
+        "message": "=Your purchase order was rejected.\n\nRequest ID: {{ $json.request_id }}\nStatus: {{ $json.status }}\n\nContact compras@mype.com.pe for next steps."
+      },
+      "id": "a1000001-0016-4000-8000-000000000016",
+      "name": "Send PO Rejected Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [2880, 560],
+      "credentials": {
+        "smtp": {
+          "id": "CONFIGURE_SMTP",
+          "name": "Gmail SMTP (compras)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "compras@mype.com.pe",
+        "toEmail": "compras@mype.com.pe",
+        "subject": "=Purchase Order Needs Review: {{ $json.request_id }}",
+        "emailType": "text",
+        "message": "=PO {{ $json.request_id }} was flagged for manual review.\n\nStatus: {{ $json.status }}\nEscalate to procurement manager."
+      },
+      "id": "a1000001-0017-4000-8000-000000000017",
+      "name": "Send Needs Review Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [2880, 760],
+      "credentials": {
+        "smtp": {
+          "id": "CONFIGURE_SMTP",
+          "name": "Gmail SMTP (compras)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Procurement automation (Phase 6)\n\nFlow: IMAP → parse → budget check → **WLC score** → **LLM justification** → PO → approval webhook.\n\n1. Configure **Gmail IMAP** + **SMTP** credentials (replace `CONFIGURE_*` IDs after import).\n2. FastAPI internal URL: `http://fastapi:8000` (score 10s, justification 30s, PO 15s timeouts).\n3. **Wait for Approval**: resume GET `?decision=Approve|Reject|Needs%20Review&approved_by=...`.\n4. Error workflow: *Procurement Error Handler* (`procurement_error_flow.json`).",
+        "height": 220,
+        "width": 520
+      },
+      "id": "a1000001-0018-4000-8000-000000000018",
+      "name": "Setup Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-40, 40]
+    }
+  ],
+  "connections": {
+    "Email Trigger (IMAP)": {
+      "main": [[{ "node": "HTML-to-Text", "type": "main", "index": 0 }]]
+    },
+    "HTML-to-Text": {
+      "main": [[{ "node": "Parse Procurement", "type": "main", "index": 0 }]]
+    },
+    "Parse Procurement": {
+      "main": [
+        [{ "node": "Budget Exceeded?", "type": "main", "index": 0 }],
+        [{ "node": "Admin Alert Parse Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Budget Exceeded?": {
+      "main": [
+        [{ "node": "Budget Alert Email", "type": "main", "index": 0 }],
+        [{ "node": "Score Suppliers", "type": "main", "index": 0 }]
+      ]
+    },
+    "Score Suppliers": {
+      "main": [
+        [{ "node": "Get Justification", "type": "main", "index": 0 }],
+        [{ "node": "Admin Alert Parse Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Justification": {
+      "main": [
+        [{ "node": "Generate PO", "type": "main", "index": 0 }],
+        [{ "node": "Admin Alert Parse Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate PO": {
+      "main": [
+        [{ "node": "Wait for Approval", "type": "main", "index": 0 }],
+        [{ "node": "Admin Alert Parse Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait for Approval": {
+      "main": [[{ "node": "Normalize Approval", "type": "main", "index": 0 }]]
+    },
+    "Normalize Approval": {
+      "main": [[{ "node": "Update PO Status", "type": "main", "index": 0 }]]
+    },
+    "Update PO Status": {
+      "main": [[{ "node": "Approved?", "type": "main", "index": 0 }]]
+    },
+    "Approved?": {
+      "main": [
+        [{ "node": "Send PO Approved Email", "type": "main", "index": 0 }],
+        [{ "node": "Rejected?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Rejected?": {
+      "main": [
+        [{ "node": "Send PO Rejected Email", "type": "main", "index": 0 }],
+        [{ "node": "Send Needs Review Email", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "Procurement Error Handler"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "procurement"
+    }
+  ],
+  "active": false,
+  "versionId": "phase6-procurement-v1"
+}

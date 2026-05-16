@@ -1,13 +1,13 @@
-# Backend API
+# API Backend
 
 Base URL: `http://localhost:8000`
 
 ## Health
 **GET /health**
 
-Returns 200 when Postgres and Ollama are OK, otherwise 503.
+Devuelve 200 cuando Postgres y Ollama estan OK, si no 503.
 
-Response body:
+Respuesta:
 ```
 {
   "postgres": "ok" | "error",
@@ -20,7 +20,7 @@ Response body:
 ## Procurement
 **GET /procurement/ping**
 
-Response:
+Respuesta:
 ```
 {"status":"ok","router":"procurement"}
 ```
@@ -34,7 +34,7 @@ Request:
 }
 ```
 
-Response (LLM output + budget estimate):
+Respuesta (salida LLM + estimacion):
 ```
 {
   "request_id": "REQ-2026-001",
@@ -50,23 +50,26 @@ Response (LLM output + budget estimate):
 }
 ```
 
-Errors:
-- 422: invalid LLM output
-- 503: Ollama unavailable
-- 500: internal error
-- 429: rate limit exceeded
+Notas:
+- `budget_exceeded` es true si no se pudo estimar el minimo o si supera `max_budget`.
+
+Errores:
+- 422: salida LLM invalida
+- 503: Ollama no disponible
+- 500: error interno
+- 429: rate limit excedido
 
 ## Orders
 **GET /orders/ping**
 
-Response:
+Respuesta:
 ```
 {"status":"ok","router":"orders"}
 ```
 
 **POST /orders/generate**
 
-Request (validated extraction):
+Request (extraccion validada):
 ```
 {
   "request_id": "REQ-2026-001",
@@ -80,7 +83,7 @@ Request (validated extraction):
 }
 ```
 
-Response:
+Respuesta:
 ```
 {
   "purchase_order_id": 12,
@@ -89,21 +92,21 @@ Response:
   "supplier_name": "TechMype Peru SAC",
   "pdf_path": "generated_pos/PO_REQ-2026-001_20260101_120000.pdf",
   "total_amount_pen": 3539.88,
-  "justification": "Meets deadline and budget.",
+  "justification": "Cumple plazo y presupuesto.",
   "runner_up_supplier_id": 1,
   "scoring_snapshot": [{"id":3,"wlc_score":0.91}]
 }
 ```
 
-Errors:
-- 409: duplicate request_id
-- 422: no eligible suppliers or invalid LLM justification
-- 503: Ollama unavailable
+Errores:
+- 409: request_id duplicado
+- 422: no hay proveedores elegibles o justificacion LLM invalida
+- 503: Ollama no disponible
 
 ## Suppliers
 **GET /suppliers/ping**
 
-Response:
+Respuesta:
 ```
 {"status":"ok","router":"suppliers"}
 ```
