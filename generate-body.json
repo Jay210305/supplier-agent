@@ -1,0 +1,83 @@
+﻿{
+    "request_id":  "REQ-2026-PS5-001",
+    "external_market_snapshot":  [
+                                     {
+                                         "source_id":  8,
+                                         "source_name":  "ScraperAPI (Amazon US)",
+                                         "adapter_key":  "scraperapi",
+                                         "query":  "Playstation 5",
+                                         "product_name":  "PlayStation DualSenseΓäó Wireless Controller - for PS5, PC, MAC \u0026 Mobile",
+                                         "unit_price":  74.97,
+                                         "currency":  "USD",
+                                         "url":  null,
+                                         "lead_time_days":  10
+                                     },
+                                     {
+                                         "source_id":  8,
+                                         "source_name":  "ScraperAPI (Amazon US)",
+                                         "adapter_key":  "scraperapi",
+                                         "query":  "Playstation 5",
+                                         "product_name":  "PlayStation┬«5 Digital Edition (slim) (Renewed)",
+                                         "unit_price":  469.0,
+                                         "currency":  "USD",
+                                         "url":  null,
+                                         "lead_time_days":  10
+                                     },
+                                     {
+                                         "source_id":  8,
+                                         "source_name":  "ScraperAPI (Amazon US)",
+                                         "adapter_key":  "scraperapi",
+                                         "query":  "Playstation 5",
+                                         "product_name":  "Sony Playstation 5 Disc Version PS5 Console - 4K-TV Gaming, 120Hz 8K Output, 16GB GDDR6, 825GB SSD, WiFi 6, Bluetooth 5.1 (Renewed) White",
+                                         "unit_price":  549.91,
+                                         "currency":  "USD",
+                                         "url":  null,
+                                         "lead_time_days":  10
+                                     },
+                                     {
+                                         "source_id":  7,
+                                         "source_name":  "ScraperAPI (MercadoLibre PE)",
+                                         "adapter_key":  "scraperapi",
+                                         "query":  "Playstation 5",
+                                         "product_name":  "Consola PlayStation 5 PS5 1TB Slim Edici├│n Digital + Juego ASTRO BOT y Gran Turismo 7",
+                                         "unit_price":  2219.0,
+                                         "currency":  "PEN",
+                                         "url":  "https://www.mercadolibre.com.pe/consola-playstation-5-ps5-1tb-slim-edicion-digital-juego-astro-bot-y-gran-turismo-7/p/MPE54151101#polycard_client=search-desktop\u0026be_origin=backend\u0026search_layout=grid\u0026position=1\u0026type=product\u0026tracking_id=c9dcc122-6cb1-4263-ad98-d38470af2235\u0026wid=MPE873241588\u0026sid=search",
+                                         "lead_time_days":  10
+                                     },
+                                     {
+                                         "source_id":  7,
+                                         "source_name":  "ScraperAPI (MercadoLibre PE)",
+                                         "adapter_key":  "scraperapi",
+                                         "query":  "Playstation 5",
+                                         "product_name":  "Consola Sony PlayStation 5 Slim Blanco 4K 825 GB Digital",
+                                         "unit_price":  2599.0,
+                                         "currency":  "PEN",
+                                         "url":  "https://www.mercadolibre.com.pe/consola-sony-playstation-5-slim-blanco-4k-825-gb-digital/p/MPE29001054#polycard_client=search-desktop\u0026be_origin=backend\u0026search_layout=grid\u0026position=4\u0026type=product\u0026tracking_id=c9dcc122-6cb1-4263-ad98-d38470af2235\u0026wid=MPE630239353\u0026sid=search",
+                                         "lead_time_days":  10
+                                     },
+                                     {
+                                         "source_id":  7,
+                                         "source_name":  "ScraperAPI (MercadoLibre PE)",
+                                         "adapter_key":  "scraperapi",
+                                         "query":  "Playstation 5",
+                                         "product_name":  "Consola Playstation 5 Slim 1 Tb Blanco Playstation",
+                                         "unit_price":  2799.0,
+                                         "currency":  "PEN",
+                                         "url":  "https://www.mercadolibre.com.pe/consola-playstation-5-slim-1-tb-blanco-playstation/p/MPE54522975#polycard_client=search-desktop\u0026be_origin=backend\u0026search_layout=grid\u0026position=3\u0026type=product\u0026tracking_id=c9dcc122-6cb1-4263-ad98-d38470af2235\u0026wid=MPE837073096\u0026sid=search",
+                                         "lead_time_days":  10
+                                     }
+                                 ],
+    "priority":  "high",
+    "constraints":  {
+                        "max_budget":  30000.0,
+                        "currency":  "PEN",
+                        "delivery_before":  "2026-12-31"
+                    },
+    "items":  [
+                  {
+                      "product":  "Playstation 5",
+                      "quantity":  10
+                  }
+              ]
+}

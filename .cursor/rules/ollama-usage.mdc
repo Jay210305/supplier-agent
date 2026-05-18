@@ -6,9 +6,9 @@ globs: "**/*.py"
 # Ollama & Local LLM Rules
 
 ## Model Usage
-- Only the local Llama 3.2 3B Instruct Q4_K_S GGUF model via Ollama is permitted.
+- Only the local `llama3.2:3b` model via Ollama is permitted (pulled natively on container start).
 - Never call cloud LLMs (OpenAI, Anthropic, Gemini, etc.).
-- The model must be registered via the Ollama container's entrypoint script using the provided Modelfile.
+- Do not use LM Studio mounts or custom Modelfile/GGUF paths; Ollama pulls from its registry into `ollama_data`.
 
 ## API Calls
 - From FastAPI, Ollama is reached at `http://ollama:11434`.
@@ -23,4 +23,4 @@ globs: "**/*.py"
 
 ## Environment Configuration
 - The FastAPI service must read `OLLAMA_BASE_URL` and `OLLAMA_MODEL` from the environment (set in `.env` and passed via `docker-compose.yml`).
-- The LM Studio model path is mounted via `LM_STUDIO_MODELS_PATH` in the Ollama service; this must match the host's LM Studio models directory.
+- `OLLAMA_MODEL` must match the tag pulled by the Ollama service (`llama3.2:3b`).

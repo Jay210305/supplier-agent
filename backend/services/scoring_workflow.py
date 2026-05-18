@@ -13,7 +13,7 @@ from models.supplier import Supplier
 from schemas.procurement_request import ProcurementJustificationLLM, ProcurementRequestExtracted
 from schemas.scoring import ScoredSupplierOut
 from services.ollama_client import OllamaClient, OllamaClientError, OllamaValidationError
-from services.procurement_candidates import build_supplier_quotes
+from services.candidate_aggregator import aggregate_supplier_quotes
 from services.scoring import score_supplier_quotes, top_suppliers
 
 logger = logging.getLogger(__name__)
@@ -114,7 +114,10 @@ async def run_supplier_scoring(
     scored_rows: list[dict[str, Any]] = []
 
     try:
-        quotes = await build_supplier_quotes(session, request)
+        aggregated = await aggregate_supplier_quotes(
+            session, request, include_external=True
+        )
+        quotes = aggregated.quotes
         scored_rows = score_supplier_quotes(quotes)
     except Exception as e:
         logger.exception("WLC scoring failed for %s: %s", request.request_id, e)

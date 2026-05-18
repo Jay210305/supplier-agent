@@ -115,6 +115,7 @@ def test_generate_po_html(
     sample_supplier: Mock,
     sample_items: list[dict],
 ) -> None:
+    sample_purchase_order.payload = None
     html_content = pdf_generator._generate_po_html(
         sample_purchase_order,
         sample_supplier,
@@ -132,6 +133,54 @@ def test_generate_po_html(
     assert "PEN" in html_content
     assert "IGV" in html_content
     assert "TOTAL" in html_content
+    assert "Anexo: precios consultados" not in html_content
+
+
+def test_generate_po_html_includes_market_appendix(
+    pdf_generator: POPDFGenerator,
+    sample_purchase_order: Mock,
+    sample_supplier: Mock,
+    sample_items: list[dict],
+) -> None:
+    sample_purchase_order.payload = {
+        "external_market_snapshot": [
+            {
+                "source_id": 1,
+                "source_name": "ScraperAPI (MercadoLibre PE)",
+                "adapter_key": "scraperapi",
+                "query": "Laptop Dell",
+                "product_name": "Laptop Dell Inspiron 15",
+                "unit_price": "2599.00",
+                "currency": "PEN",
+                "url": "https://articulo.mercadolibre.com.pe/MPE-9999",
+                "lead_time_days": 5,
+            },
+            {
+                "source_id": 2,
+                "source_name": "ScraperAPI (Amazon US)",
+                "adapter_key": "scraperapi",
+                "query": "Laptop Dell",
+                "product_name": "Dell Inspiron 15 3000",
+                "unit_price": "549.99",
+                "currency": "USD",
+                "url": "https://www.amazon.com/dp/B0EXAMPLE",
+                "lead_time_days": 12,
+            },
+        ]
+    }
+
+    html_content = pdf_generator._generate_po_html(
+        sample_purchase_order,
+        sample_supplier,
+        sample_items,
+    )
+
+    assert "Anexo: precios consultados en marketplaces" in html_content
+    assert "[scraperapi] ScraperAPI (MercadoLibre PE)" in html_content
+    assert "[scraperapi] ScraperAPI (Amazon US)" in html_content
+    assert "2599.00 PEN" in html_content
+    assert "549.99 USD" in html_content
+    assert "https://www.amazon.com/dp/B0EXAMPLE" in html_content
 
 
 def test_cleanup_old_pdfs(pdf_generator: POPDFGenerator) -> None:

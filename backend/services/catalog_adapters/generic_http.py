@@ -21,7 +21,7 @@ import logging
 import re
 from decimal import Decimal
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import quote_plus, urljoin
 
 import httpx
 from selectolax.parser import HTMLParser, Node
@@ -45,6 +45,28 @@ _USER_AGENT = (
 )
 
 
+def format_query_for_template(query: str, template: str, cfg: dict[str, Any]) -> str:
+    """Turn a user search string into the ``{query}`` placeholder for ``search_url_template``.
+
+    - ``slug``: MercadoLibre listado paths (``playstation 5`` → ``playstation-5``).
+    - ``query`` / ``form`` / ``urlencode``: query-string values (``playstation+5``).
+    - ``raw``: unchanged (legacy).
+    - If ``query_format`` is omitted: ``slug`` when the template has no ``?`` before
+      ``{query}``, otherwise ``query``.
+    """
+    q = query.strip()
+    fmt = (cfg.get("query_format") or "").strip().lower()
+    if not fmt:
+        fmt = "slug" if "{query}" in template and "?" not in template.split("{query}")[0] else "query"
+    if fmt == "slug":
+        s = q.lower()
+        s = re.sub(r"[^\w\s-]", "", s, flags=re.UNICODE)
+        return re.sub(r"[\s_]+", "-", s).strip("-")
+    if fmt in ("query", "form", "urlencode"):
+        return quote_plus(q)
+    return q
+
+
 class GenericHttpAdapter(CatalogAdapter):
     metadata = AdapterMetadata(
         key="generic_http",
@@ -62,6 +84,7 @@ class GenericHttpAdapter(CatalogAdapter):
             "image_attribute",
             "currency",
             "price_regex",
+            "query_format",
         ),
     )
 
@@ -79,11 +102,23 @@ class GenericHttpAdapter(CatalogAdapter):
                 "item_selector, name_selector and price_selector in config."
             )
 
-        url = template.format(query=httpx.QueryParams({"q": query})["q"])
-        headers = {"User-Agent": _USER_AGENT, "Accept-Language": "es-PE,es;q=0.9,en;q=0.8"}
+        target_url = template.format(
+            query=format_query_for_template(query, template, cfg)
+        )
+        html, base_url = await self._fetch_search_document(target_url, ctx)
+        return self._parse_html(html=html, base_url=base_url, cfg=cfg, limit=limit, ctx=ctx)
 
+    async def _fetch_search_document(
+        self, target_url: str, ctx: SourceContext
+    ) -> tuple[str, str]:
+        """Fetch the search page and return ``(html, base_url_for_relative_links)``.
+
+        Subclasses (e.g. proxied scrapers) override this to change *how* the
+        document is retrieved while reusing the selector-based parsing below.
+        """
+        headers = {"User-Agent": _USER_AGENT, "Accept-Language": "es-PE,es;q=0.9,en;q=0.8"}
         try:
-            response = await ctx.client.get(url, headers=headers, follow_redirects=True)
+            response = await ctx.client.get(target_url, headers=headers, follow_redirects=True)
             response.raise_for_status()
         except httpx.TimeoutException as e:
             raise AdapterTimeoutError(f"{ctx.source.name} timeout: {e}") from e
@@ -93,8 +128,21 @@ class GenericHttpAdapter(CatalogAdapter):
             ) from e
         except httpx.RequestError as e:
             raise AdapterError(f"{ctx.source.name} request error: {e}") from e
+        return response.text, str(response.url)
 
-        html = response.text
+    def _parse_html(
+        self,
+        *,
+        html: str,
+        base_url: str,
+        cfg: dict[str, Any],
+        limit: int,
+        ctx: SourceContext,
+    ) -> list[ExternalProductResult]:
+        item_sel = cfg["item_selector"]
+        name_sel = cfg["name_selector"]
+        price_sel = cfg["price_selector"]
+
         tree = HTMLParser(html)
         nodes = tree.css(item_sel)
         if not nodes:
@@ -110,7 +158,7 @@ class GenericHttpAdapter(CatalogAdapter):
             try:
                 result = self._normalize(
                     node=node,
-                    base_url=str(response.url),
+                    base_url=base_url,
                     name_selector=name_sel,
                     price_selector=price_sel,
                     url_selector=cfg.get("url_selector"),
@@ -136,6 +184,22 @@ class GenericHttpAdapter(CatalogAdapter):
         return text or None
 
     @staticmethod
+    def _price_text(node: Node, price_selector: str) -> str | None:
+        el = node.css_first(price_selector)
+        if el is not None:
+            text = GenericHttpAdapter._text(el)
+            if text:
+                return text
+        whole = node.css_first("span.a-price-whole")
+        frac = node.css_first("span.a-price-fraction")
+        if whole is None:
+            return None
+        w = whole.text(strip=True).replace(",", "")
+        f = frac.text(strip=True) if frac is not None else ""
+        combined = f"{w}{f}".strip(".")
+        return combined or None
+
+    @staticmethod
     def _normalize(
         *,
         node: Node,
@@ -151,15 +215,20 @@ class GenericHttpAdapter(CatalogAdapter):
         ctx: SourceContext,
     ) -> ExternalProductResult | None:
         name = GenericHttpAdapter._text(node.css_first(name_selector))
-        price_text = GenericHttpAdapter._text(node.css_first(price_selector))
+        price_text = GenericHttpAdapter._price_text(node, price_selector)
         if not name or not price_text:
             return None
 
-        match = price_re.search(price_text.replace(",", "."))
+        match = price_re.search(price_text.replace(" ", ""))
         if not match:
             return None
+        raw = match.group(1)
+        if (ctx.config or {}).get("price_thousands_separator") == ".":
+            parts = raw.split(".")
+            if len(parts) > 1 and all(len(p) == 3 for p in parts[1:]):
+                raw = "".join(parts)
         try:
-            price = _safe_decimal(match.group(1))
+            price = _safe_decimal(raw.replace(",", "."))
         except Exception:
             return None
         if price <= Decimal("0"):

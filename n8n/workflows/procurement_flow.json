@@ -50,7 +50,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ email_body: $json.text }) }}",
+        "jsonBody": "={{ JSON.stringify({ email_body: $json.text, include_external: true }) }}",
         "options": {
           "timeout": 120000,
           "response": {
@@ -101,7 +101,7 @@
           "conditions": [
             {
               "id": "budget-exceeded",
-              "leftValue": "={{ $json.budget_exceeded }}",
+              "leftValue": "={{ $json.budget_exceeded === true && (!$json.external_market_snapshot || $json.external_market_snapshot.length === 0) }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -126,7 +126,7 @@
         "toEmail": "compras@mype.com.pe",
         "subject": "=Budget Alert: Procurement Request {{ $json.request_id }} Exceeds Budget",
         "emailType": "text",
-        "message": "=Budget exceeded for procurement request.\n\nRequest ID: {{ $json.request_id }}\nItems: {{ JSON.stringify($json.items) }}\nEstimated minimum total (PEN): {{ $json.estimated_minimum_total }}\nBudget limit (PEN): {{ $json.constraints.max_budget }}\n\nPlease review manually before placing an order."
+        "message": "=Budget exceeded and no marketplace snapshot was returned.\n\nRequest ID: {{ $json.request_id }}\nItems: {{ JSON.stringify($json.items) }}\nEstimated minimum total (PEN): {{ $json.estimated_minimum_total }}\nBudget limit (PEN): {{ $json.constraints.max_budget }}\nMarketplace rows: {{ ($json.external_market_snapshot || []).length }}\n\nEnable ScraperAPI sources or adjust budget/delivery."
       },
       "id": "a1000001-0006-4000-8000-000000000006",
       "name": "Budget Alert Email",
@@ -223,9 +223,9 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ request_id: $json.request_id, supplier_id: $json.recommended_supplier_id, items: $json.items, constraints: $json.constraints, priority: $json.priority, justification: $json.justification, runner_up_supplier_id: $json.runner_up_supplier_id }) }}",
+        "jsonBody": "={{ JSON.stringify({ request_id: $('Parse Procurement').item.json.request_id, items: $('Parse Procurement').item.json.items, constraints: $('Parse Procurement').item.json.constraints, priority: $('Parse Procurement').item.json.priority, external_market_snapshot: $('Parse Procurement').item.json.external_market_snapshot || [] }) }}",
         "options": {
-          "timeout": 15000,
+          "timeout": 180000,
           "response": {
             "response": {
               "fullResponse": false,
@@ -241,6 +241,26 @@
       "typeVersion": 4.2,
       "position": [1440, 520],
       "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "compras@mype.com.pe",
+        "toEmail": "={{ $('Email Trigger (IMAP)').item.json.from?.value?.[0]?.address || $('Email Trigger (IMAP)').item.json.from || 'compras@mype.com.pe' }}",
+        "subject": "=PO draft ready: {{ $json.request_id }} — approval required",
+        "emailType": "text",
+        "message": "=Your procurement request was processed.\n\nRequest ID: {{ $json.request_id }}\nSupplier: {{ $json.supplier_name }}\nTotal (PEN): {{ $json.total_amount_pen }}\nPDF (in container): {{ $json.pdf_path }}\n\nMarketplace rows consulted: {{ ($('Parse Procurement').item.json.external_market_snapshot || []).length }}\n\nNEXT: In n8n (http://localhost:5678) open this execution, node Wait for Approval, use the resume link with ?decision=Approve&approved_by=manager"
+      },
+      "id": "a1000001-0019-4000-8000-000000000019",
+      "name": "Send PO Draft Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1560, 520],
+      "credentials": {
+        "smtp": {
+          "id": "CONFIGURE_SMTP",
+          "name": "Gmail SMTP (compras)"
+        }
+      }
     },
     {
       "parameters": {
@@ -454,7 +474,7 @@
     "Budget Exceeded?": {
       "main": [
         [{ "node": "Budget Alert Email", "type": "main", "index": 0 }],
-        [{ "node": "Score Suppliers", "type": "main", "index": 0 }]
+        [{ "node": "Generate PO", "type": "main", "index": 0 }]
       ]
     },
     "Score Suppliers": {
@@ -471,8 +491,13 @@
     },
     "Generate PO": {
       "main": [
-        [{ "node": "Wait for Approval", "type": "main", "index": 0 }],
+        [{ "node": "Send PO Draft Email", "type": "main", "index": 0 }],
         [{ "node": "Admin Alert Parse Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send PO Draft Email": {
+      "main": [
+        [{ "node": "Wait for Approval", "type": "main", "index": 0 }]
       ]
     },
     "Wait for Approval": {

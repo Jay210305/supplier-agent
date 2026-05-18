@@ -15,6 +15,8 @@ class Settings(BaseSettings):
 
     OLLAMA_BASE_URL: str = "http://ollama:11434"
     OLLAMA_MODEL: str = "llama3.2:3b"
+    # First JSON extraction on CPU Docker can exceed 2–5 min while the model loads.
+    OLLAMA_REQUEST_TIMEOUT: int = 600
 
     # PDF output (Docker: /app/generated_pos; local tests may override)
     GENERATED_POS_DIR: str = "/app/generated_pos"
@@ -23,7 +25,7 @@ class Settings(BaseSettings):
     EXTERNAL_SEARCH_ENABLED: bool = True
     EXTERNAL_SEARCH_DEFAULT_LIMIT: int = 10
     EXTERNAL_SEARCH_CACHE_TTL_HOURS: int = 6
-    EXTERNAL_SEARCH_GLOBAL_TIMEOUT: int = 20
+    EXTERNAL_SEARCH_GLOBAL_TIMEOUT: int = 120
 
     # Optional adapter credentials (CatalogSource.auth wins over these)
     AMAZON_PAAPI_ACCESS_KEY: str = ""
@@ -32,6 +34,11 @@ class Settings(BaseSettings):
     EBAY_OAUTH_TOKEN: str = ""
     ALIBABA_APP_KEY: str = ""
     ALIBABA_APP_SECRET: str = ""
+    MELI_ACCESS_TOKEN: str = ""
+    MELI_REFRESH_TOKEN: str = ""
+    MELI_CLIENT_ID: str = ""
+    MELI_CLIENT_SECRET: str = ""
+    SCRAPERAPI_API_KEY: str = ""
 
     @property
     def prompts_dir(self) -> Path:

@@ -25,22 +25,31 @@ from models.catalog_source import CatalogSource
 from models.enums import CatalogSourceKind
 
 
-def _rows() -> list[CatalogSource]:
+def _rows(*, enable_scraperapi: bool = False) -> list[CatalogSource]:
+    scraper_enabled = enable_scraperapi
     return [
         CatalogSource(
             name="MercadoLibre Perú",
             kind=CatalogSourceKind.WEBSITE,
             adapter_key="mercadolibre",
             endpoint="https://api.mercadolibre.com",
-            is_enabled=True,
+            is_enabled=False,
             country="PE",
             currency="PEN",
             reliability_rating=Decimal("7.50"),
             rate_limit_per_min=15,
             timeout_seconds=12,
-            auth=None,
+            auth={
+                "access_token": "",
+                "refresh_token": "",
+                "client_id": "",
+                "client_secret": "",
+            },
             config={"site_id": "MPE"},
-            notes="API pública sin autenticación. Default-enabled como fuente demo.",
+            notes=(
+                "OAuth en developers.mercadolibre.com.pe; token en auth o MELI_* en .env. "
+                "Usa /products/search (el endpoint /sites/.../search?q= ya no funciona)."
+            ),
         ),
         CatalogSource(
             name="Amazon US",
@@ -113,6 +122,75 @@ def _rows() -> list[CatalogSource]:
             notes="Plantilla genérica de scraping HTML. Ajustar selectores según el sitio real.",
         ),
         CatalogSource(
+            name="ScraperAPI (MercadoLibre PE)",
+            kind=CatalogSourceKind.WEBSITE,
+            adapter_key="scraperapi",
+            endpoint="http://api.scraperapi.com",
+            is_enabled=scraper_enabled,
+            country="PE",
+            currency="PEN",
+            reliability_rating=Decimal("7.00"),
+            rate_limit_per_min=5,
+            timeout_seconds=90,
+            auth={"api_key": ""},
+            config={
+                "search_url_template": "https://listado.mercadolibre.com.pe/{query}",
+                "query_format": "slug",
+                "item_selector": "li.ui-search-layout__item",
+                # ML nordic layout uses poly-component titles, not h2.
+                "name_selector": "a.poly-component__title, h3",
+                "price_selector": ".andes-money-amount",
+                "url_selector": "a.poly-component__title",
+                "url_attribute": "href",
+                "image_selector": "img",
+                "image_attribute": "src",
+                "currency": "PEN",
+                "price_regex": r"(\d{1,3}(?:\.\d{3})*)",
+                "price_thousands_separator": ".",
+                # ML PE serves a bot wall without JS; render=true is required.
+                "render": True,
+                "country_code": "pe",
+            },
+            notes=(
+                "Plantilla ScraperAPI: setear api_key en auth o SCRAPERAPI_API_KEY en .env. "
+                "Activar 'render: true' solo si el sitio carga precios con JavaScript "
+                "(consume más créditos y aumenta latencia; subir timeout_seconds en consecuencia)."
+            ),
+        ),
+        CatalogSource(
+            name="ScraperAPI (Amazon US)",
+            kind=CatalogSourceKind.WEBSITE,
+            adapter_key="scraperapi",
+            endpoint="http://api.scraperapi.com",
+            is_enabled=scraper_enabled,
+            country="US",
+            currency="USD",
+            reliability_rating=Decimal("7.50"),
+            rate_limit_per_min=4,
+            timeout_seconds=90,
+            auth={"api_key": ""},
+            config={
+                "search_url_template": "https://www.amazon.com/s?k={query}",
+                "query_format": "query",
+                "item_selector": "div[data-component-type='s-search-result']",
+                "name_selector": "h2 a span, h2 span, span.a-size-medium",
+                "price_selector": ".a-price .a-offscreen",
+                "price_regex": "\\$([\\d,]+(?:\\.\\d{2})?)",
+                "url_selector": "a.a-link-normal[href*='/dp/']",
+                "url_attribute": "href",
+                "image_selector": "img.s-image",
+                "image_attribute": "src",
+                "currency": "USD",
+                "render": True,
+                "country_code": "us",
+            },
+            notes=(
+                "Amazon SERP vía ScraperAPI: requiere `render: true` (consume créditos premium) "
+                "y `country_code: us`. Configurar api_key en auth o SCRAPERAPI_API_KEY en .env. "
+                "Subir timeout_seconds si Amazon devuelve la página antibot."
+            ),
+        ),
+        CatalogSource(
             name="Proveedor RFQ por email",
             kind=CatalogSourceKind.EMAIL,
             adapter_key="email_rfq",
@@ -131,10 +209,11 @@ def _rows() -> list[CatalogSource]:
 
 
 def seed() -> None:
+    scraper_key = (settings.SCRAPERAPI_API_KEY or "").strip()
     engine = create_engine(settings.sync_database_url, future=True)
     Session = sessionmaker(bind=engine, future=True)
     with Session.begin() as session:
-        for incoming in _rows():
+        for incoming in _rows(enable_scraperapi=bool(scraper_key)):
             existing = session.execute(
                 select(CatalogSource).where(CatalogSource.name == incoming.name)
             ).scalar_one_or_none()
@@ -154,8 +233,10 @@ def seed() -> None:
                 "notes",
             ):
                 setattr(existing, column, getattr(incoming, column))
-            # Never flip an enabled source off via re-seed; only enable new ones.
-            if not existing.is_enabled and incoming.is_enabled:
+            # Never flip an enabled source off via re-seed.
+            if scraper_key and incoming.adapter_key == "scraperapi":
+                existing.is_enabled = True
+            elif not existing.is_enabled and incoming.is_enabled:
                 existing.is_enabled = True
             # Preserve user-supplied auth secrets; only fill if currently empty.
             if not existing.auth and incoming.auth:

@@ -17,7 +17,7 @@ The following variables must be defined in `.env` (as per the documentation):
 - POSTGRES_PASSWORD
 - OLLAMA_BASE_URL (internal URL for FastAPI: http://ollama:11434)
 - OLLAMA_MODEL
-- LM_STUDIO_MODELS_PATH (absolute path on the host to the LM Studio models directory)
+- GENERATED_POS_DIR (PDF output path inside FastAPI container, default `/app/generated_pos`)
 - IMAP_HOST
 - IMAP_PORT
 - IMAP_USER
@@ -28,7 +28,7 @@ The following variables must be defined in `.env` (as per the documentation):
 
 ## Service-Specific Variables
 - PostgreSQL: Uses POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD.
-- Ollama: Uses LM_STUDIO_MODELS_PATH (for volume mount) and the model is registered via the entrypoint.
+- Ollama: Pulls `llama3.2:3b` on first start; weights persist in Docker volume `ollama_data`. No host model path required.
 - FastAPI: Requires POSTGRES_HOST (set to `postgres`), POSTGRES_PORT (5432), OLLAMA_BASE_URL, OLLAMA_MODEL, SECRET_KEY, ENV, API_PORT.
 - n8n: Requires DB_TYPE, DB_POSTGRESDB_HOST, DB_POSTGRESDB_PORT, DB_POSTGRESDB_DATABASE, DB_POSTGRESDB_USER, DB_POSTGRESDB_PASSWORD, N8N_ENCRYPTION_KEY, and also N8N_HOST, N8N_PORT, N8N_PROTOCOL, WEBHOOK_URL.
 - Frontend: No direct environment variables at runtime; but the Docker build may use variables for configuration (not currently used).
@@ -49,7 +49,6 @@ The following variables must be defined in `.env` (as per the documentation):
 
 ## Docker Compose and Environment
 - In `docker-compose.yml`, use variable substitution (e.g., `${POSTGRES_DB}`) to inject environment variables into the service definitions.
-- The `LM_STUDIO_MODELS_PATH` must be set to the absolute path on the host machine where the LM Studio models are stored.
 - The `POSTGRES_HOST`, `OLLAMA_BASE_URL`, etc., inside the containers must be the service names (as defined in Docker Compose) and not `localhost`.
 
 ## Development vs Production
@@ -71,10 +70,9 @@ POSTGRES_PASSWORD=changeme
 
 # ── Ollama ────────────────────────────────────────
 OLLAMA_BASE_URL=http://ollama:11434
-OLLAMA_MODEL=llama3.2-3b
+OLLAMA_MODEL=llama3.2:3b
 
-# ── LM Studio model mount ─────────────────────────
-LM_STUDIO_MODELS_PATH=/Users/yourname/.lmstudio/models
+GENERATED_POS_DIR=/app/generated_pos
 
 # ── Email (IMAP) ──────────────────────────────────
 IMAP_HOST=imap.gmail.com

@@ -10,12 +10,13 @@ layer can keep treating quotes uniformly without colliding with real IDs.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from schemas.catalog_source import ExternalProductResult
+from schemas.catalog_source import ExternalProductResult, MarketplaceListing
 from schemas.procurement_request import ProcurementItem, ProcurementRequestExtracted
 from services.catalog_search import search_many_queries
 from services.procurement_candidates import (
@@ -27,9 +28,35 @@ from services.scoring import SupplierQuote
 logger = logging.getLogger(__name__)
 
 
+_SNAPSHOT_TOP_N_PER_QUERY = 3
+
+
+@dataclass
+class AggregatedCandidates:
+    """Result of one fan-out: scoring quotes + flattened marketplace snapshot."""
+
+    quotes: list[SupplierQuote]
+    market_snapshot: list[MarketplaceListing] = field(default_factory=list)
+
+
 def _virtual_supplier_id(catalog_source_id: int) -> int:
     """Map a CatalogSource.id → negative integer so it never collides with suppliers.id."""
     return -abs(int(catalog_source_id))
+
+
+def _norm_query(value: str) -> str:
+    return " ".join(value.lower().split())
+
+
+def _hits_for_item(
+    item: ProcurementItem, per_query: dict[str, list[ExternalProductResult]]
+) -> list[ExternalProductResult]:
+    """Resolve search hits for a line (case-insensitive query key)."""
+    key = _norm_query(item.product)
+    for q, hits in per_query.items():
+        if _norm_query(q) == key:
+            return hits
+    return per_query.get(item.product, [])
 
 
 def _pick_best_external_for_item(
@@ -42,6 +69,14 @@ def _pick_best_external_for_item(
         and r.available_stock >= item.quantity
         and r.minimum_order_quantity <= item.quantity
     ]
+    if not candidates:
+        # Search was already scoped to `item.product`; use best marketplace hit.
+        candidates = [
+            r
+            for r in results
+            if r.available_stock >= item.quantity
+            and r.minimum_order_quantity <= item.quantity
+        ]
     if not candidates:
         return None
     return min(
@@ -68,8 +103,10 @@ def _external_results_to_quote(
     rating = Decimal("5.00")
     currency = request.constraints.currency
 
+    line_currencies: set[str] = set()
+
     for item in request.items:
-        hits = per_query.get(item.product, [])
+        hits = _hits_for_item(item, per_query)
         pick = _pick_best_external_for_item(item, hits)
         if pick is None:
             return None
@@ -78,6 +115,7 @@ def _external_results_to_quote(
         max_lead = max(max_lead, pick.lead_time_days)
         rating = pick.rating
         adapter_key = pick.adapter_key
+        line_currencies.add(pick.currency.upper())
         line_picks.append(
             {
                 "product_id": None,
@@ -93,7 +131,9 @@ def _external_results_to_quote(
             }
         )
 
-    if extended > request.constraints.max_budget:
+    budget_ccy = request.constraints.currency.upper()
+    enforce_budget = line_currencies and all(c == budget_ccy for c in line_currencies)
+    if enforce_budget and extended > request.constraints.max_budget:
         logger.debug(
             "External source %s skipped: extended %s > budget %s",
             source_name,
@@ -122,18 +162,54 @@ def _external_results_to_quote(
     )
 
 
+def _flatten_market_snapshot(
+    per_source: dict[int, dict[str, list[ExternalProductResult]]],
+    top_n_per_query: int = _SNAPSHOT_TOP_N_PER_QUERY,
+) -> list[MarketplaceListing]:
+    """Cheapest-first top-N hits per (source, query), flattened for reporting."""
+    listings: list[MarketplaceListing] = []
+    for per_query in per_source.values():
+        for query, hits in per_query.items():
+            ranked = sorted(hits, key=lambda r: (r.unit_price, r.lead_time_days))
+            for hit in ranked[:top_n_per_query]:
+                listings.append(
+                    MarketplaceListing(
+                        source_id=hit.source_id,
+                        source_name=hit.source_name,
+                        adapter_key=hit.adapter_key,
+                        query=query,
+                        product_name=hit.product_name,
+                        unit_price=hit.unit_price,
+                        currency=hit.currency,
+                        url=hit.url,
+                        lead_time_days=hit.lead_time_days,
+                    )
+                )
+    listings.sort(
+        key=lambda m: (0 if m.adapter_key == "scraperapi" else 1, m.unit_price)
+    )
+    return listings
+
+
 async def aggregate_supplier_quotes(
     session: AsyncSession,
     request: ProcurementRequestExtracted,
     *,
     include_external: bool = True,
     source_ids: list[int] | None = None,
-) -> list[SupplierQuote]:
-    """Local DB pool + external catalog pool, ready for `score_supplier_quotes`."""
+) -> AggregatedCandidates:
+    """Local DB pool + external catalog pool in a single fan-out.
+
+    Returns scoring-ready quotes and a flattened ``MarketplaceListing`` snapshot
+    derived from the same ``search_many_queries`` call. The snapshot includes
+    raw hits even when strict per-line matching fails to produce an external
+    supplier quote, so the parse report and PO appendix can still surface
+    marketplace prices the agent consulted.
+    """
     local_quotes = await build_supplier_quotes(session, request)
 
     if not include_external:
-        return local_quotes
+        return AggregatedCandidates(quotes=local_quotes)
 
     queries = [item.product for item in request.items]
     per_source: dict[int, dict[str, list[ExternalProductResult]]] = (
@@ -146,7 +222,6 @@ async def aggregate_supplier_quotes(
 
     external_quotes: list[SupplierQuote] = []
     for source_id, per_query in per_source.items():
-        # Source name is taken from the first hit if any; fall back to id otherwise
         any_hit: ExternalProductResult | None = next(
             (h for hits in per_query.values() for h in hits), None
         )
@@ -161,12 +236,15 @@ async def aggregate_supplier_quotes(
         if quote is not None:
             external_quotes.append(quote)
 
+    snapshot = _flatten_market_snapshot(per_source)
+
     merged = local_quotes + external_quotes
     logger.info(
-        "Aggregated %s quotes (local=%s, external=%s) for request %s",
+        "Aggregated %s quotes (local=%s, external=%s) + %s market listings for request %s",
         len(merged),
         len(local_quotes),
         len(external_quotes),
+        len(snapshot),
         request.request_id,
     )
-    return merged
+    return AggregatedCandidates(quotes=merged, market_snapshot=snapshot)

@@ -13,7 +13,7 @@
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "C:/Users/jay21/Documents/Universidad/e-Bussiness/n8n"
+        "C:/Users/jay21/Documents/Universidad/e-Bussiness/supplier-agent/n8n"
       ]
     },
     "fetch": {
@@ -27,6 +27,13 @@
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "ScraperAPI": {
+      "command": "python",
+      "args": ["-m", "scraperapi_mcp_server"],
+      "env": {
+        "API_KEY": "${SCRAPERAPI_API_KEY}"
+      }
     }
   }
 }

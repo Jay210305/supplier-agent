@@ -5,6 +5,7 @@ import time
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from starlette.responses import Response
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -114,13 +115,18 @@ async def update_source(
     return CatalogSourceRead.model_validate(row)
 
 
-@router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_source(source_id: int, db: AsyncSession = Depends(get_db)) -> None:
+@router.delete(
+    "/{source_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+async def delete_source(source_id: int, db: AsyncSession = Depends(get_db)) -> Response:
     row = await db.get(CatalogSource, source_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Catalog source not found")
     await db.delete(row)
     await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/{source_id}/test", response_model=TestSourceResponse)
@@ -146,6 +152,7 @@ async def test_source(
         )
 
     adapter = adapter_cls()
+    source_config = dict(row.config or {})
     timeout = httpx.Timeout(row.timeout_seconds, connect=min(row.timeout_seconds, 5))
     started = time.perf_counter()
     try:
@@ -154,7 +161,7 @@ async def test_source(
                 source=row,
                 client=client,
                 auth=_merged_auth(row),
-                config=row.config or {},
+                config=source_config,
             )
             hits = await adapter.search(query=body.query, limit=body.limit, ctx=ctx)
     except AdapterError as e:

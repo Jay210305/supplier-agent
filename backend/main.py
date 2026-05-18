@@ -37,6 +37,12 @@ def _ollama_has_model(tags_body: dict, model_name: str) -> bool:
     return False
 
 
+@app.get("/ready")
+async def ready() -> JSONResponse:
+    """Liveness probe — returns 200 as soon as uvicorn is accepting connections."""
+    return JSONResponse({"status": "ok"})
+
+
 @app.get("/health")
 async def health() -> JSONResponse:
     postgres_status = "error"

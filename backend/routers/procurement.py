@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.session import get_db
 from limiter import limiter
+from schemas.catalog_source import MarketplaceListing
 from schemas.procurement_request import (
     ProcurementParseBody,
     ProcurementParseResponse,
@@ -63,26 +64,40 @@ async def parse_procurement_email(
     sources_used: list[str] = []
     external_quote_count = 0
     external_min_total: Decimal | None = None
+    market_snapshot: list[MarketplaceListing] = []
 
     if body.include_external:
         try:
-            quotes = await aggregate_supplier_quotes(
+            aggregated = await aggregate_supplier_quotes(
                 db,
                 extracted_request,
                 include_external=True,
                 source_ids=body.source_ids,
             )
-            external_quotes = [q for q in quotes if q.supplier_id < 0]
+            external_quotes = [q for q in aggregated.quotes if q.supplier_id < 0]
             external_quote_count = len(external_quotes)
+            market_snapshot = aggregated.market_snapshot
             if external_quotes:
                 external_min_total = min(q.extended_total for q in external_quotes)
-                sources_used = sorted({q.company_name for q in external_quotes})
+                # ScraperAPI-backed sources first so the report leads with the
+                # default-priority pricing the agent consulted before others.
+                sources_used = sorted(
+                    {q.company_name for q in external_quotes},
+                    key=lambda name: (0 if name.startswith("[scraperapi]") else 1, name),
+                )
         except Exception:
             logger.exception("External catalog aggregation failed")
 
     candidates: list[Decimal] = [v for v in (local_est, external_min_total) if v is not None]
     est = min(candidates) if candidates else None
-    budget_exceeded = est is None or est > extracted_request.constraints.max_budget
+    if est is not None:
+        budget_exceeded = est > extracted_request.constraints.max_budget
+    elif market_snapshot:
+        # Marketplace hits exist but no single quote total (e.g. mixed FX / delivery).
+        # Let n8n continue to /orders/generate using external_market_snapshot.
+        budget_exceeded = False
+    else:
+        budget_exceeded = True
 
     return ProcurementParseResponse(
         **extracted_request.model_dump(),
@@ -90,4 +105,5 @@ async def parse_procurement_email(
         estimated_minimum_total=est,
         sources_used=sources_used,
         external_candidate_count=external_quote_count,
+        external_market_snapshot=market_snapshot,
     )

@@ -42,7 +42,7 @@ class OllamaValidationError(Exception):
 
 class OllamaClient:
     def __init__(self) -> None:
-        self.timeout = 120.0
+        self.timeout = float(settings.OLLAMA_REQUEST_TIMEOUT)
 
     def _prompt_file(self, filename: str) -> str:
         path: Path = settings.prompts_dir / filename
@@ -87,9 +87,22 @@ class OllamaClient:
                 raise OllamaClientError(
                     f"Ollama service error: {e.response.status_code}"
                 ) from e
+            except httpx.TimeoutException as e:
+                logger.error(
+                    "Ollama timed out after %ss (%s)", self.timeout, settings.OLLAMA_BASE_URL
+                )
+                raise OllamaClientError(
+                    f"Ollama timed out after {int(self.timeout)}s "
+                    f"(first run on CPU may need several minutes while the model loads; retry)"
+                ) from e
             except httpx.RequestError as e:
-                logger.error("Ollama request error: %s", e)
-                raise OllamaClientError(f"Failed to connect to Ollama: {e}") from e
+                logger.error(
+                    "Ollama request error (%s): %r", settings.OLLAMA_BASE_URL, e
+                )
+                raise OllamaClientError(
+                    f"Failed to reach Ollama at {settings.OLLAMA_BASE_URL}: "
+                    f"{type(e).__name__}: {e}"
+                ) from e
 
         text = (body.get("response") or "").strip()
         if not text:

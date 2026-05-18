@@ -24,7 +24,7 @@ a human-in-the-loop approval step.
 |---|---|---|
 | Workflow Automation | **n8n** (self-hosted, Docker) | https://docs.n8n.io |
 | Local LLM Runtime | **Ollama** (Docker, GPU optional) | https://github.com/ollama/ollama/blob/main/docs/api.md |
-| LLM Model | **Llama 3.2 3B Instruct Q4_K_S** (GGUF, local file) | https://ollama.com/library/llama3.2 |
+| LLM Model | **llama3.2:3b** (Ollama pull, cached in `ollama_data`) | https://ollama.com/library/llama3.2 |
 | Database | **PostgreSQL 16** (Docker) | https://www.postgresql.org/docs/16/index.html |
 | Backend API | **FastAPI** (Python 3.12, Docker) | https://fastapi.tiangolo.com |
 | ORM | **SQLAlchemy 2.0** | https://docs.sqlalchemy.org/en/20/ |
@@ -111,33 +111,27 @@ services:
     container_name: ollama
     restart: unless-stopped
     volumes:
-      # Mount LM Studio's model cache so Ollama can read the GGUF file.
-      # Adjust the left side to your actual LM Studio models path:
-      #   Windows: C:/Users/<YOU>/.lmstudio/models
-      #   macOS/Linux: ~/.lmstudio/models
-      - ${LM_STUDIO_MODELS_PATH}:/root/.ollama/gguf-import:ro
-      - ollama_data:/root/.ollama
-      - ./ollama/Modelfile:/tmp/Modelfile:ro
-      - ./ollama/entrypoint.sh:/entrypoint.sh:ro
+      - ollama_data:/root/.ollama   # persists pulled model weights
     ports:
       - "11434:11434"
     networks:
       - supplier-net
-    # Uncomment if you have an NVIDIA GPU:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-    entrypoint: ["/bin/bash", "/entrypoint.sh"]
+    # GPU (Linux): run ./setup.sh, then docker compose -f docker-compose.gpu.yml up -d
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+          ollama serve &
+          OLLAMA_PID=$$!
+          until ollama list >/dev/null 2>&1; do sleep 2; done
+          ollama pull llama3.2:3b || true
+          wait "$$OLLAMA_PID"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      test: ["CMD", "ollama", "list"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 120s
 
   fastapi:
     build:
@@ -218,55 +212,14 @@ networks:
 
 ---
 
-## 5. Ollama Bootstrap (GGUF from LM Studio)
+## 5. Ollama Bootstrap (native pull)
 
-Ollama inside Docker needs to register the model from the mounted GGUF file.
-These two files handle it automatically on container start.
+On first start the `ollama` container runs `ollama pull llama3.2:3b` (~2 GB, cached in
+volume `ollama_data`). No LM Studio mount, no `ollama/Modelfile`, no host GGUF path.
 
-### `ollama/Modelfile`
-```dockerfile
-FROM /root/.ollama/gguf-import/lmstudio-community/Llama-3.2-3B-Instruct-Q4_K_S.gguf
-
-TEMPLATE """<|start_header_id|>system<|end_header_id|>
-{{ .System }}<|eot_id|><|start_header_id|>user<|end_header_id|>
-{{ .Prompt }}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-"""
-
-SYSTEM """You are a procurement assistant. Always respond in valid JSON only."""
-
-PARAMETER stop "<|eot_id|>"
-PARAMETER stop "<|end_of_text|>"
-PARAMETER temperature 0.1
-PARAMETER num_ctx 4096
-```
-
-### `ollama/entrypoint.sh`
-```bash
-#!/bin/bash
-set -e
-
-# Start Ollama server in background
-ollama serve &
-OLLAMA_PID=$!
-
-# Wait for Ollama to be ready
-echo "Waiting for Ollama to start..."
-until curl -sf http://localhost:11434/api/tags > /dev/null; do
-  sleep 2
-done
-
-# Register the model from the mounted GGUF only if not already registered
-if ! ollama list | grep -q "llama3.2-3b"; then
-  echo "Registering llama3.2-3b from local GGUF file..."
-  ollama create llama3.2-3b -f /tmp/Modelfile
-  echo "Model registered successfully."
-else
-  echo "Model llama3.2-3b already registered, skipping."
-fi
-
-# Hand off to Ollama server process
-wait $OLLAMA_PID
-```
+- Model tag in `.env` / Compose: `llama3.2:3b` (must match the pulled tag).
+- GPU (Linux): `bash setup.sh` then `docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d`.
+- macOS Apple Silicon: Metal is automatic; use `docker compose up -d` only.
 
 ---
 
@@ -284,13 +237,10 @@ POSTGRES_PASSWORD=changeme
 # ── Ollama ────────────────────────────────────────
 # Internal URL (used by FastAPI container → ollama container)
 OLLAMA_BASE_URL=http://ollama:11434
-OLLAMA_MODEL=llama3.2-3b
+OLLAMA_MODEL=llama3.2:3b
 
-# ── LM Studio model mount ─────────────────────────
-# Set this to your LM Studio models folder on the HOST machine:
-#   Windows example: C:/Users/YourName/.lmstudio/models
-#   macOS/Linux example: /Users/yourname/.lmstudio/models
-LM_STUDIO_MODELS_PATH=/Users/yourname/.lmstudio/models
+# PDF output inside FastAPI container (volume po_pdfs → /app/generated_pos)
+GENERATED_POS_DIR=/app/generated_pos
 
 # ── Email (IMAP) ──────────────────────────────────
 IMAP_HOST=imap.gmail.com
@@ -316,10 +266,6 @@ supplier-agent/
 ├── .gitignore
 ├── docker-compose.yml
 ├── AGENTS.md                      # this file
-│
-├── ollama/
-│   ├── Modelfile                  # GGUF registration spec
-│   └── entrypoint.sh              # auto-registers model on start
 │
 ├── backend/
 │   ├── Dockerfile
@@ -669,8 +615,8 @@ docker compose logs -f ollama
 # ── Verify model is registered ────────────────────
 docker exec ollama ollama list
 
-# ── Re-register model manually (if needed) ────────
-docker exec ollama ollama create llama3.2-3b -f /tmp/Modelfile
+# ── Re-pull model manually (if needed) ────────────
+docker exec ollama ollama pull llama3.2:3b
 
 # ── Test Ollama from host ──────────────────────────
 curl http://localhost:11434/api/tags

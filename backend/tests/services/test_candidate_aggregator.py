@@ -87,9 +87,14 @@ def test_pick_best_external_filters_stock_and_moq_and_picks_cheapest() -> None:
 def test_pick_best_external_returns_none_when_no_candidates() -> None:
     item = ProcurementItem(product="laptop", quantity=2)
     assert _pick_best_external_for_item(item, []) is None
-    assert (
-        _pick_best_external_for_item(item, [_hit(name="cama", price="100")]) is None
-    )
+
+
+def test_pick_best_external_uses_marketplace_hit_when_title_does_not_match() -> None:
+    """Search results are already scoped by query; title tokens are not required."""
+    item = ProcurementItem(product="laptop", quantity=2)
+    pick = _pick_best_external_for_item(item, [_hit(name="cama", price="100")])
+    assert pick is not None
+    assert pick.product_name == "cama"
 
 
 def test_external_quote_built_when_within_budget_and_deadline() -> None:

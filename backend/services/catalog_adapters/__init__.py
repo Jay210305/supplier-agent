@@ -21,8 +21,10 @@ from services.catalog_adapters.ebay import EbayAdapter
 from services.catalog_adapters.email_rfq import EmailRFQAdapter
 from services.catalog_adapters.generic_http import GenericHttpAdapter
 from services.catalog_adapters.mercadolibre import MercadoLibreAdapter
+from services.catalog_adapters.scraperapi import ScraperApiAdapter
 
 ADAPTERS: dict[str, type[CatalogAdapter]] = {
+    ScraperApiAdapter.metadata.key: ScraperApiAdapter,
     MercadoLibreAdapter.metadata.key: MercadoLibreAdapter,
     AmazonAdapter.metadata.key: AmazonAdapter,
     EbayAdapter.metadata.key: EbayAdapter,

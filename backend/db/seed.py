@@ -15,7 +15,20 @@ from models.supplier import Supplier
 
 
 def _seed_rows() -> list[tuple[Supplier, list[Product]]]:
+    from services.marketplace_fulfillment import MARKETPLACE_PLACEHOLDER_RUC
+
     rows: list[tuple[Supplier, list[Product]]] = [
+        (
+            Supplier(
+                company_name="Catálogo externo (marketplace)",
+                ruc=MARKETPLACE_PLACEHOLDER_RUC,
+                email="marketplace@catalog.local",
+                phone=None,
+                address="Referencia — cumplimiento vía marketplaces conectados",
+                rating=Decimal("7.00"),
+            ),
+            [],
+        ),
         (
             Supplier(
                 company_name="Distribuidora Andina SAC",

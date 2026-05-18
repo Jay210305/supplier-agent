@@ -2,6 +2,7 @@
 PDF generation service for Purchase Orders using WeasyPrint.
 Generates professional PDF POs in Peruvian Soles (PEN) format.
 """
+import html as html_lib
 import logging
 from datetime import datetime
 from decimal import Decimal
@@ -13,7 +14,7 @@ from weasyprint.text.fonts import FontConfiguration
 
 from config import settings
 from models.purchase_order import PurchaseOrder
-from models.supplier import Supplier
+from services.marketplace_fulfillment import SupplierPDFView
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ class POPDFGenerator:
     def generate_purchase_order_pdf(
         self,
         purchase_order: PurchaseOrder,
-        supplier: Supplier,
+        supplier: SupplierPDFView,
         items: list[dict[str, Any]],
     ) -> str:
         """
@@ -103,7 +104,7 @@ class POPDFGenerator:
     def _generate_po_html(
         self,
         purchase_order: PurchaseOrder,
-        supplier: Supplier,
+        supplier: SupplierPDFView,
         items: list[dict[str, Any]],
     ) -> str:
         """
@@ -122,6 +123,12 @@ class POPDFGenerator:
         # Format dates
         po_date = purchase_order.created_at.strftime("%d/%m/%Y") if purchase_order.created_at else ""
         po_ref = purchase_order.request_id or f"PO-{purchase_order.id}"
+
+        payload = purchase_order.payload if isinstance(purchase_order.payload, dict) else {}
+        snapshot = payload.get("external_market_snapshot") or []
+        if not isinstance(snapshot, list):
+            snapshot = []
+        appendix_html = self._render_market_snapshot_appendix(snapshot)
         
         # Build HTML
         html = f"""
@@ -219,6 +226,40 @@ class POPDFGenerator:
                     color: #555;
                     margin-top: 10px;
                 }}
+                .appendix {{
+                    margin-top: 40px;
+                    padding-top: 15px;
+                    border-top: 1px dashed #999;
+                    page-break-inside: avoid;
+                }}
+                .appendix-title {{
+                    font-size: 13pt;
+                    font-weight: bold;
+                    color: #2c3e50;
+                    margin-bottom: 6px;
+                }}
+                .appendix-lead {{
+                    font-size: 9pt;
+                    color: #555;
+                    margin-bottom: 12px;
+                }}
+                table.appendix-table {{
+                    font-size: 9pt;
+                    margin-top: 0;
+                }}
+                table.appendix-table th,
+                table.appendix-table td {{
+                    padding: 5px 6px;
+                }}
+                .appendix-source {{
+                    font-weight: bold;
+                    white-space: nowrap;
+                }}
+                .appendix-url {{
+                    color: #1a5fb4;
+                    word-break: break-all;
+                    font-size: 8pt;
+                }}
             </style>
         </head>
         <body>
@@ -271,14 +312,15 @@ class POPDFGenerator:
             quantity = Decimal(str(item.get('quantity', 0)))
             unit_price = Decimal(str(item.get('unit_price', 0)))
             item_subtotal = quantity * unit_price
+            line_ccy = html_lib.escape(str(item.get("currency") or purchase_order.currency or "PEN"))
             
             html += f"""
                     <tr>
                         <td>{idx}</td>
                         <td>{item.get('product_name', item.get('product', 'Producto'))}</td>
                         <td>{quantity}</td>
-                        <td>{unit_price:.2f}</td>
-                        <td>{item_subtotal:.2f}</td>
+                        <td>{unit_price:.2f} {line_ccy}</td>
+                        <td>{item_subtotal:.2f} {line_ccy}</td>
                     </tr>
             """
         
@@ -300,7 +342,8 @@ class POPDFGenerator:
                     <span class="total-value">""" + f"{total_amount:.2f}" + """ PEN</span>
                 </div>
             </div>
-            
+            """ + appendix_html + """
+
             <div class="footer">
                 <p>Esta orden de compra está sujeta a los términos y condiciones estándar de nuestra empresa.</p>
                 <p>Por favor, confirme la recepción de esta orden dentro de 24 horas.</p>
@@ -314,6 +357,75 @@ class POPDFGenerator:
         
         return html
     
+    @staticmethod
+    def _render_market_snapshot_appendix(snapshot: list[dict[str, Any]]) -> str:
+        """Render the marketplace price-check appendix (empty string when none)."""
+        if not snapshot:
+            return ""
+
+        rows: list[str] = []
+        for listing in snapshot:
+            try:
+                price = Decimal(str(listing.get("unit_price", 0)))
+            except Exception:
+                continue
+            source_label = html_lib.escape(
+                f"[{listing.get('adapter_key', '?')}] {listing.get('source_name', '?')}"
+            )
+            query = html_lib.escape(str(listing.get("query", "")))
+            product = html_lib.escape(str(listing.get("product_name", ""))[:200])
+            currency = html_lib.escape(str(listing.get("currency", "PEN")))
+            lead = listing.get("lead_time_days")
+            lead_cell = f"{int(lead)} d" if lead is not None else "-"
+            url = listing.get("url")
+            if url:
+                safe_url = html_lib.escape(str(url), quote=True)
+                display_url = html_lib.escape(str(url)[:80])
+                url_cell = f'<a class="appendix-url" href="{safe_url}">{display_url}</a>'
+            else:
+                url_cell = "-"
+            rows.append(
+                f"""
+                    <tr>
+                        <td class="appendix-source">{source_label}</td>
+                        <td>{query}</td>
+                        <td>{product}</td>
+                        <td>{price:.2f} {currency}</td>
+                        <td>{lead_cell}</td>
+                        <td>{url_cell}</td>
+                    </tr>
+                """
+            )
+
+        return (
+            """
+            <div class="appendix">
+                <div class="appendix-title">Anexo: precios consultados en marketplaces</div>
+                <div class="appendix-lead">
+                    Resultados externos consultados por el agente al momento de generar esta orden.
+                    Solo informativo; no sustituye la cotización del proveedor seleccionado.
+                </div>
+                <table class="appendix-table">
+                    <thead>
+                        <tr>
+                            <th>Fuente</th>
+                            <th>Consulta</th>
+                            <th>Producto</th>
+                            <th>Precio</th>
+                            <th>Entrega</th>
+                            <th>Enlace</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """
+            + "".join(rows)
+            + """
+                    </tbody>
+                </table>
+            </div>
+            """
+        )
+
     def cleanup_old_pdfs(self, days_to_keep: int = 30) -> int:
         """
         Clean up old PDF files to save disk space.

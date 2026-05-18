@@ -7,6 +7,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
+from schemas.catalog_source import MarketplaceListing
+
 
 class ProcurementPriority(str, Enum):
     LOW = "low"
@@ -74,6 +76,7 @@ class ProcurementParseResponse(ProcurementRequestExtracted):
     estimated_minimum_total: Decimal | None = None
     sources_used: list[str] = []
     external_candidate_count: int = 0
+    external_market_snapshot: list[MarketplaceListing] = []
 
     @field_serializer("estimated_minimum_total", when_used="json")
     def _ser_est(self, value: Decimal | None) -> float | None:

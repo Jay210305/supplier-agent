@@ -10,6 +10,9 @@ import {
 import SourceFormDialog from "../components/SourceFormDialog";
 import TestResultsDialog from "../components/TestResultsDialog";
 
+const SOURCE_TEST_QUERY = "PlayStation 5";
+const SOURCE_TEST_LIMIT = 5;
+
 export default function SourcesPage() {
   const [sources, setSources] = useState<CatalogSource[]>([]);
   const [adapters, setAdapters] = useState<AdapterInfo[]>([]);
@@ -76,14 +79,14 @@ export default function SourcesPage() {
     setTestResult(null);
     setTesting(true);
     try {
-      const result = await api.testSource(s.id, "laptop", 5);
+      const result = await api.testSource(s.id, SOURCE_TEST_QUERY, SOURCE_TEST_LIMIT);
       setTestResult(result);
     } catch (e) {
       setTestResult({
         source_id: s.id,
         source_name: s.name,
         adapter_key: s.adapter_key,
-        query: "laptop",
+        query: SOURCE_TEST_QUERY,
         elapsed_ms: 0,
         ok: false,
         error: e instanceof Error ? e.message : "Error desconocido",

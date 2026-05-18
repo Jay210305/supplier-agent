@@ -7,16 +7,18 @@ from typing import Annotated, Any
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from models.enums import PurchaseOrderStatus
+from schemas.catalog_source import MarketplaceListing
 from schemas.procurement_request import ProcurementRequestExtracted
 
 
 class OrderGenerateBody(ProcurementRequestExtracted):
     """POST /orders/generate — extraction output plus optional pre-selected supplier."""
 
-    supplier_id: Annotated[int | None, Field(default=None, ge=1)] = None
+    supplier_id: int | None = None  # negative = virtual marketplace catalog source id
     justification: Annotated[str | None, Field(default=None, max_length=8000)] = None
     runner_up_supplier_id: int | None = None
     scoring_snapshot: list[dict[str, Any]] | None = None
+    external_market_snapshot: list[MarketplaceListing] | None = None
 
 
 class PurchaseOrderBase(BaseModel):

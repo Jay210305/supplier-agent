@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from models.enums import CatalogSourceKind
 
@@ -104,10 +104,34 @@ class ExternalProductResult(BaseModel):
     raw: dict[str, Any] | None = None
 
 
+class MarketplaceListing(BaseModel):
+    """Flattened external product hit for parse reporting and PO PDF appendix.
+
+    Carries the originating procurement line (``query``) alongside the hit so
+    the appendix can show which line each marketplace price came from.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    source_id: int
+    source_name: Annotated[str, Field(min_length=1, max_length=120)]
+    adapter_key: Annotated[str, Field(min_length=1, max_length=64)]
+    query: Annotated[str, Field(min_length=1, max_length=255)]
+    product_name: Annotated[str, Field(min_length=1, max_length=512)]
+    unit_price: Annotated[Decimal, Field(ge=0, max_digits=14, decimal_places=2)]
+    currency: Annotated[str, Field(default="PEN", min_length=3, max_length=3)] = "PEN"
+    url: Annotated[str | None, Field(default=None, max_length=2048)] = None
+    lead_time_days: Annotated[int, Field(ge=0, le=3650)] = 7
+
+    @field_serializer("unit_price", when_used="json")
+    def _ser_price(self, value: Decimal) -> float:
+        return float(value)
+
+
 class TestSourceBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    query: Annotated[str, Field(min_length=1, max_length=255)] = "laptop"
+    query: Annotated[str, Field(min_length=1, max_length=255)] = "PlayStation 5"
     limit: Annotated[int, Field(ge=1, le=25)] = 5
 
 

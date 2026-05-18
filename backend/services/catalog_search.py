@@ -47,6 +47,15 @@ logger = logging.getLogger(__name__)
 
 _EVENT_TYPE = "EXTERNAL_SEARCH"
 
+# Adapters consulted first when the agent fans out to external sources.
+# Operators can rely on ScraperAPI-backed pricing being checked before other
+# providers so the parse report ranks those quotes earlier.
+_PRIORITY_ADAPTER_KEYS: tuple[str, ...] = ("scraperapi",)
+
+
+def is_priority_adapter(adapter_key: str) -> bool:
+    return adapter_key in _PRIORITY_ADAPTER_KEYS
+
 
 def _query_hash(query: str) -> str:
     return hashlib.sha256(query.strip().lower().encode("utf-8")).hexdigest()
@@ -69,6 +78,15 @@ def _merged_auth(source: CatalogSource) -> dict[str, Any]:
             "app_key": settings.ALIBABA_APP_KEY,
             "app_secret": settings.ALIBABA_APP_SECRET,
         }
+    elif key == "mercadolibre":
+        fallback = {
+            "access_token": settings.MELI_ACCESS_TOKEN,
+            "refresh_token": settings.MELI_REFRESH_TOKEN,
+            "client_id": settings.MELI_CLIENT_ID,
+            "client_secret": settings.MELI_CLIENT_SECRET,
+        }
+    elif key == "scraperapi":
+        fallback = {"api_key": settings.SCRAPERAPI_API_KEY}
     merged = {k: v for k, v in fallback.items() if v}
     if source.auth:
         merged.update({k: v for k, v in source.auth.items() if v not in (None, "")})
@@ -290,35 +308,67 @@ async def search_one_query(
         s.id: asyncio.Semaphore(max(1, min(s.rate_limit_per_min, 20))) for s in sources
     }
 
-    coros = [
-        _run_one(
-            source=s,
-            query=query,
-            limit=effective_limit,
-            qhash=qhash,
-            semaphore=semaphores[s.id],
-        )
-        for s in sources
-    ]
-    try:
-        gathered = await asyncio.wait_for(
-            asyncio.gather(*coros, return_exceptions=False),
-            timeout=settings.EXTERNAL_SEARCH_GLOBAL_TIMEOUT,
-        )
-    except asyncio.TimeoutError:
-        async with AsyncSessionLocal() as log_session:
-            await _log(
-                log_session,
-                None,
-                event="global_timeout",
-                severity=LogSeverity.WARNING,
-                message=f"query={query!r} timeout={settings.EXTERNAL_SEARCH_GLOBAL_TIMEOUT}s",
-                payload={"query": query},
-            )
-            await log_session.commit()
-        return {}
+    # Phase 1: priority adapters (ScraperAPI). Phase 2: everything else.
+    # Sharing the same wall-clock budget keeps `/procurement/parse` bounded.
+    priority = [s for s in sources if is_priority_adapter(s.adapter_key)]
+    rest = [s for s in sources if not is_priority_adapter(s.adapter_key)]
+    phases = [p for p in (priority, rest) if p]
 
-    return {source_id: hits or [] for source_id, hits in gathered}
+    results: dict[int, list[ExternalProductResult]] = {}
+    deadline = asyncio.get_event_loop().time() + settings.EXTERNAL_SEARCH_GLOBAL_TIMEOUT
+
+    for phase_idx, phase_sources in enumerate(phases):
+        remaining = deadline - asyncio.get_event_loop().time()
+        if remaining <= 0:
+            async with AsyncSessionLocal() as log_session:
+                await _log(
+                    log_session,
+                    None,
+                    event="global_timeout",
+                    severity=LogSeverity.WARNING,
+                    message=(
+                        f"query={query!r} phase={phase_idx} skipped "
+                        f"(no time left within {settings.EXTERNAL_SEARCH_GLOBAL_TIMEOUT}s)"
+                    ),
+                    payload={"query": query, "phase": phase_idx},
+                )
+                await log_session.commit()
+            break
+
+        coros = [
+            _run_one(
+                source=s,
+                query=query,
+                limit=effective_limit,
+                qhash=qhash,
+                semaphore=semaphores[s.id],
+            )
+            for s in phase_sources
+        ]
+        try:
+            gathered = await asyncio.wait_for(
+                asyncio.gather(*coros, return_exceptions=False),
+                timeout=remaining,
+            )
+        except asyncio.TimeoutError:
+            async with AsyncSessionLocal() as log_session:
+                await _log(
+                    log_session,
+                    None,
+                    event="global_timeout",
+                    severity=LogSeverity.WARNING,
+                    message=(
+                        f"query={query!r} phase={phase_idx} "
+                        f"timeout={settings.EXTERNAL_SEARCH_GLOBAL_TIMEOUT}s"
+                    ),
+                    payload={"query": query, "phase": phase_idx},
+                )
+                await log_session.commit()
+            break
+        for source_id, hits in gathered:
+            results[source_id] = hits or []
+
+    return results
 
 
 async def search_many_queries(

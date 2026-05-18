@@ -15,8 +15,11 @@ export default function TestResultsDialog({ source, response, loading, onClose }
           <div>
             <h3 className="text-lg font-semibold">Probar fuente: {source.name}</h3>
             <p className="text-xs text-slate-400 mt-1">
-              Consulta de prueba con <code className="text-emerald-300">"laptop"</code> (límite 5).
-              No se escribe en caché.
+              Consulta de prueba con{" "}
+              <code className="text-emerald-300">
+                "{response?.query ?? "PlayStation 5"}"
+              </code>{" "}
+              (límite 5). No se escribe en caché.
             </p>
           </div>
           <button
